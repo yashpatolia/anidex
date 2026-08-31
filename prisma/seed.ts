@@ -20,7 +20,7 @@ const SAMPLE_ENTRIES: {
   { anilistId: 154587, status: WatchStatus.WATCHING, score: null, progress: 8 }, // Frieren
   { anilistId: 21, status: WatchStatus.WATCHING, score: null, progress: 400 }, // One Piece
   { anilistId: 101922, status: WatchStatus.PLANNED, score: null, progress: 0 }, // Demon Slayer
-  { anilistId: 20958, status: WatchStatus.DROPPED, score: 5, progress: 3 }, // Prison School (example drop)
+  { anilistId: 20958, status: WatchStatus.DROPPED, score: 5, progress: 3 }, // Attack on Titan S2 (example drop)
 ];
 
 async function main() {
