@@ -214,29 +214,51 @@ export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]
   // AniList clamps any id_in lookup to 50 results per page regardless of
   // the requested perPage — silently, no error — so anything past the
   // first 50 ids in a single request would just vanish from the response.
-  // Chunk and fetch in parallel instead.
   const CHUNK = 50;
   const chunks: number[][] = [];
   for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
 
-  const query = `
-    query ($ids: [Int], $perPage: Int) {
-      Page(perPage: $perPage) {
-        media(id_in: $ids, type: ANIME) {
-          ${MEDIA_DETAIL_FIELDS}
-        }
-      }
-    }
-  `;
+  // Each chunk still needs its own Page/media selection, but multiple of
+  // them can share one HTTP request via GraphQL aliases (same trick as
+  // getLandingRails above) — meaningfully fewer requests against AniList's
+  // rate limit for a big list (a 300-entry Profile is 6 chunks: 2 requests
+  // instead of 6). Kept deliberately small (not "all chunks in one
+  // request") since these carry the full nested detail shape — characters,
+  // relations, studios — unlike the landing page's light fields; no
+  // documented complexity cap to size against, so staying conservative.
+  const ALIASES_PER_REQUEST = 4;
+  const groups: number[][][] = [];
+  for (let i = 0; i < chunks.length; i += ALIASES_PER_REQUEST) {
+    groups.push(chunks.slice(i, i + ALIASES_PER_REQUEST));
+  }
+
   const results = await Promise.all(
-    chunks.map((chunk) =>
-      anilistFetch<{ Page: { media: AnilistMediaDetail[] } }>(query, {
-        ids: chunk,
-        perPage: chunk.length,
-      }),
-    ),
+    groups.map(async (group) => {
+      const query = `
+        query (${group.map((_, i) => `$ids${i}: [Int], $perPage${i}: Int`).join(", ")}) {
+          ${group
+            .map(
+              (_, i) => `
+            c${i}: Page(perPage: $perPage${i}) {
+              media(id_in: $ids${i}, type: ANIME) {
+                ${MEDIA_DETAIL_FIELDS}
+              }
+            }`,
+            )
+            .join("\n")}
+        }
+      `;
+      const variables: Record<string, unknown> = {};
+      group.forEach((chunk, i) => {
+        variables[`ids${i}`] = chunk;
+        variables[`perPage${i}`] = chunk.length;
+      });
+
+      const data = await anilistFetch<Record<string, { media: AnilistMediaDetail[] }>>(query, variables);
+      return group.flatMap((_, i) => data[`c${i}`].media);
+    }),
   );
-  return results.flatMap((r) => r.Page.media);
+  return results.flat();
 }
 
 export const SEASONS = [
