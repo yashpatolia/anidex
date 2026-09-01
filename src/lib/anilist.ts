@@ -498,6 +498,33 @@ export async function getAnilistUserList(username: string): Promise<AnilistListE
   );
 }
 
+// --- Airing calendar support (src/app/airing) ---
+
+const AIRING_FIELDS = `
+  id
+  title { romaji english native }
+  coverImage { large }
+  nextAiringEpisode { airingAt episode }
+`;
+
+export type AnilistAiringMedia = {
+  id: number;
+  title: { romaji: string | null; english: string | null; native: string | null };
+  coverImage: { large: string | null };
+  // null once a show has finished airing (or was never a broadcast release
+  // to begin with, e.g. a movie) — AniList only ever exposes the single
+  // next episode, never a full future schedule.
+  nextAiringEpisode: { airingAt: number; episode: number } | null;
+};
+
+// Light fields only (no genres/score/etc. — the calendar just needs a
+// cover, a title, and the one upcoming episode) for whichever anime the
+// caller is currently watching. Reuses the same chunking/aliasing engine as
+// getAnimeCardsByIds, just with a narrower field set and its own type.
+export function getAiringScheduleByIds(ids: number[]): Promise<AnilistAiringMedia[]> {
+  return getMediaByIds<AnilistAiringMedia>(ids, AIRING_FIELDS, 10);
+}
+
 export async function browseAnime(filters: BrowseFilters) {
   const {
     search, genres, yearFrom, yearTo, formats, statuses, minScore,

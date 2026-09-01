@@ -40,6 +40,12 @@ export async function Nav() {
           {session?.user ? (
             <>
               <Link
+                href="/airing"
+                className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
+              >
+                Airing
+              </Link>
+              <Link
                 href="/profile"
                 className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
               >
