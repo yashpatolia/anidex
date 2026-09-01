@@ -79,7 +79,9 @@ export function AccountView({
       const res = await fetch("/api/account/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify(
+          hasPassword ? { currentPassword, newPassword } : { newPassword },
+        ),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -90,6 +92,7 @@ export function AccountView({
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSaved(true);
+      router.refresh();
     } finally {
       setPasswordSaving(false);
     }
@@ -158,11 +161,16 @@ export function AccountView({
           >
             {profileSaving ? "Saving…" : "Save"}
           </button>
-          {profileSaved && <span className="font-mono text-xs text-ash">Saved.</span>}
+          {profileSaved && (
+            <span className="font-mono text-xs text-ash">Saved.</span>
+          )}
         </div>
         <p className="font-mono text-[11px] text-ash">
           Accent color, sections, and stats are customized from your{" "}
-          <Link href="/profile" className="text-paper underline underline-offset-2 hover:text-hanko">
+          <Link
+            href="/profile"
+            className="text-paper underline underline-offset-2 hover:text-hanko"
+          >
             list
           </Link>{" "}
           instead.
@@ -180,11 +188,19 @@ export function AccountView({
         </ul>
       </section>
 
-      {/* Change password */}
-      {hasPassword && (
-        <section className="flex flex-col gap-4 border-t border-line pt-8">
-          <h2 className="font-display text-lg text-paper">Change password</h2>
-          <form onSubmit={changePassword} className="flex flex-col gap-4">
+      {/* Change / set password */}
+      <section className="flex flex-col gap-4 border-t border-line pt-8">
+        <h2 className="font-display text-lg text-paper">
+          {hasPassword ? "Change password" : "Set a password"}
+        </h2>
+        {!hasPassword && (
+          <p className="text-sm text-ash">
+            You currently sign in with Google only. Add a password so you can
+            also sign in with your email.
+          </p>
+        )}
+        <form onSubmit={changePassword} className="flex flex-col gap-4">
+          {hasPassword && (
             <label className="flex flex-col gap-1.5">
               <span className={labelClass()}>Current password</span>
               <input
@@ -194,48 +210,59 @@ export function AccountView({
                 className={fieldClass()}
               />
             </label>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className={labelClass()}>New password</span>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  minLength={8}
-                  className={fieldClass()}
-                />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className={labelClass()}>Confirm new password</span>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  minLength={8}
-                  className={fieldClass()}
-                />
-              </label>
-            </div>
-            {passwordError && <p className="font-mono text-xs text-hanko">{passwordError}</p>}
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={passwordSaving}
-                className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
-              >
-                {passwordSaving ? "Saving…" : "Update password"}
-              </button>
-              {passwordSaved && <span className="font-mono text-xs text-ash">Password updated.</span>}
-            </div>
-          </form>
-        </section>
-      )}
+          )}
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className={labelClass()}>New password</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                className={fieldClass()}
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className={labelClass()}>Confirm new password</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                minLength={8}
+                className={fieldClass()}
+              />
+            </label>
+          </div>
+          {passwordError && (
+            <p className="font-mono text-xs text-hanko">{passwordError}</p>
+          )}
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={passwordSaving}
+              className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
+            >
+              {passwordSaving
+                ? "Saving…"
+                : hasPassword
+                  ? "Update password"
+                  : "Set password"}
+            </button>
+            {passwordSaved && (
+              <span className="font-mono text-xs text-ash">
+                Password saved.
+              </span>
+            )}
+          </div>
+        </form>
+      </section>
 
       {/* Delete account */}
       <section className="flex flex-col gap-3 border-t border-line pt-8">
         <h2 className="font-display text-lg text-paper">Danger zone</h2>
         <p className="text-sm text-ash">
-          Permanently delete your account and everything tracked on your list. This can&apos;t be undone.
+          Permanently delete your account and everything tracked on your list.
+          This can&apos;t be undone.
         </p>
         <button
           type="button"
@@ -258,10 +285,12 @@ export function AccountView({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-2">
-              <p className="font-mono text-xs uppercase tracking-widest text-hanko">This can&apos;t be undone</p>
+              <p className="font-mono text-xs uppercase tracking-widest text-hanko">
+                This can&apos;t be undone
+              </p>
               <p className="text-sm text-paper">
-                Permanently delete your account and every anime on your list? You&apos;ll be signed out
-                immediately.
+                Permanently delete your account and every anime on your list?
+                You&apos;ll be signed out immediately.
               </p>
             </div>
             <div className="flex justify-end gap-3">

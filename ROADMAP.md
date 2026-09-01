@@ -2,17 +2,12 @@
 
 Features scoped for later, not yet built. Ordered roughly by dependency, not priority.
 
-## Account settings page
-`/account` (or `/settings`). Needed before some of the below can ship safely.
-- Change password (credentials users only)
-- Link/unlink Google OAuth
-- Delete account (cascades via existing `onDelete: Cascade` on `Account`/`Session`/`AnimeListEntry`)
-- Display name / bio already editable via Profile's Customize panel — consider moving here instead, Profile stays list-focused
-
-## List export
-- Button on Profile or Account settings: download own `AnimeListEntry` rows as JSON and/or CSV
-- Straightforward: one query scoped to `userId`, no new schema
-- Do this before import (reuse the shape for import validation/testing)
+## Account settings page — mostly done
+`/account`: display name/bio (moved off Profile), change password, set a password for
+Google-only accounts, delete account, list of linked sign-in methods — all shipped.
+- Still open: actual link/unlink of Google OAuth (an unlink button is deferred until it can't
+  strand a user with no way back in — revisit once every account is guaranteed to have at
+  least one other verified sign-in method)
 
 ## List import from MyAnimeList / AniList
 - Highest-impact feature for adoption — lets someone migrate an existing list instead of starting at zero
@@ -38,7 +33,6 @@ Features scoped for later, not yet built. Ordered roughly by dependency, not pri
 
 ## UI/UX polish batch
 Flagged 2026-09-01, not yet scoped in detail:
-- Auth: real email/password registration + login (today's Credentials provider is dev-seed-only, gated out of production — see `src/lib/auth.ts`)
 - Auth/Profile: let a user choose a username (also a prerequisite noted under Public profile pages above, for a `/u/[username]` URL)
 
 Also flagged during the original roadmap discussion, not selected for this batch but worth remembering:

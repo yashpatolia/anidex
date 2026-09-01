@@ -5,14 +5,19 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
 
 const bodySchema = z.object({
-  currentPassword: z.string().min(1),
+  // Required to change an existing password, omitted when setting one for
+  // the first time (Google-only accounts have no passwordHash to check
+  // against — the authenticated session itself is the trust boundary there).
+  currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(8).max(200),
 });
 
-// POST /api/account/password — change password for a credentials (email/
-// password) user. Only meaningful for accounts that already have a
-// passwordHash; there's no registration flow yet to create one for
-// OAuth-only users (see ROADMAP.md).
+// POST /api/account/password — set or change a credentials (email/
+// password) sign-in for the current account. If the account already has a
+// passwordHash, currentPassword must match it. If it doesn't (an
+// OAuth-only account, e.g. signed in via Google), this adds a password as
+// an additional sign-in method — no currentPassword needed since there's
+// nothing to verify against; the request is already authenticated.
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
   if (userId instanceof NextResponse) return userId;
@@ -25,13 +30,15 @@ export async function POST(req: NextRequest) {
   const { currentPassword, newPassword } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
-  if (!user?.passwordHash) {
-    return NextResponse.json({ error: "This account doesn't sign in with a password." }, { status: 400 });
-  }
 
-  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!valid) {
-    return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });
+  if (user?.passwordHash) {
+    if (!currentPassword) {
+      return NextResponse.json({ error: "Current password is required." }, { status: 400 });
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });
+    }
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12);

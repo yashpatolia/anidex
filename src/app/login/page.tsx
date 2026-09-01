@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-// The email/password path only ever authenticates the seeded dev user
-// (see prisma/seed.ts) — there's no real signup flow behind it. Never show
-// it in production; Google is the only real login method there.
-const SHOW_DEV_LOGIN = process.env.NODE_ENV !== "production";
+// Dev/CI convenience: the seeded dev user's credentials, shown as a hint
+// under the form. Has no effect on which providers are available — that's
+// unconditional now that real signup exists (see /register).
+const SHOW_DEV_HINT = process.env.NODE_ENV !== "production";
 
 function GoogleIcon() {
   return (
@@ -61,45 +62,44 @@ export default function LoginPage() {
         <h1 className="font-display text-3xl text-paper">Welcome back.</h1>
       </div>
 
-      {SHOW_DEV_LOGIN && (
-        <>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Email</span>
-              <input
-                type="email"
-                placeholder="dev@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Password</span>
-              <input
-                type="password"
-                placeholder="devpassword"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-              />
-            </label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Email</span>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
+          />
+        </label>
 
-            {error && <p className="font-mono text-xs text-hanko">{error}</p>}
+        {error && <p className="font-mono text-xs text-hanko">{error}</p>}
 
-            <button
-              type="submit"
-              className="mt-2 border border-hanko bg-hanko px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
-            >
-              Sign in
-            </button>
-          </form>
+        <button
+          type="submit"
+          className="mt-2 border border-hanko bg-hanko px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
+        >
+          Sign in
+        </button>
+      </form>
 
-          <p className="font-mono text-[11px] text-ash">
-            Dev seed login: dev@example.com / devpassword
-          </p>
-        </>
-      )}
+      <p className="font-mono text-[11px] text-ash">
+        No account?{" "}
+        <Link href="/register" className="text-paper underline underline-offset-2 hover:text-hanko">
+          Register
+        </Link>
+        {SHOW_DEV_HINT && " · Dev seed login: dev@example.com / devpassword"}
+      </p>
 
       <div className="flex flex-col gap-4 border-t border-line pt-6">
         <button
