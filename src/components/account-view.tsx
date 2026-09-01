@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 function fieldClass() {
@@ -186,6 +186,15 @@ export function AccountView({
           ))}
           {hasPassword && <li>Password</li>}
         </ul>
+        {!providers.includes("google") && (
+          <button
+            type="button"
+            onClick={() => signIn("google", { callbackUrl: "/account" })}
+            className="self-start border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
+          >
+            Link Google account
+          </button>
+        )}
       </section>
 
       {/* Change / set password */}
