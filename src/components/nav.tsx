@@ -29,6 +29,14 @@ export async function Nav() {
             >
               Seasonal
             </Link>
+            {session?.user && (
+              <Link
+                href="/airing"
+                className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
+              >
+                Airing
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -39,12 +47,6 @@ export async function Nav() {
         <div className="flex items-center justify-end">
           {session?.user ? (
             <>
-              <Link
-                href="/airing"
-                className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
-              >
-                Airing
-              </Link>
               <Link
                 href="/profile"
                 className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
