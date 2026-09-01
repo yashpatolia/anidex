@@ -18,6 +18,8 @@ export default async function AccountPage() {
       name: true,
       bio: true,
       email: true,
+      username: true,
+      usernameAutoAssigned: true,
       passwordHash: true,
       accounts: { select: { provider: true } },
     },
@@ -29,6 +31,8 @@ export default async function AccountPage() {
       name={user.name}
       bio={user.bio}
       email={user.email}
+      username={user.username}
+      usernameAutoAssigned={user.usernameAutoAssigned}
       hasPassword={user.passwordHash != null}
       providers={user.accounts.map((a) => a.provider)}
     />

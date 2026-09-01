@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { generateUniqueUsername } from "@/lib/username";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -50,6 +51,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.id) session.user.id = token.id as string;
       return session;
+    },
+  },
+  events: {
+    // Fires when the adapter creates a brand-new User row — i.e. a first-
+    // time Google sign-up (credentials signups create their own username
+    // directly in /api/auth/register and never hit this). Every account
+    // needs a username, and there's no form step for Google to collect one,
+    // so generate one now; the user can rename it any time from Account
+    // settings (usernameAutoAssigned drives the nudge to do so there).
+    async createUser({ user }) {
+      if (!user.id) return;
+      const seed = user.email?.split("@")[0] ?? user.name ?? "user";
+      const username = await generateUniqueUsername(prisma, seed);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { username, usernameAutoAssigned: true },
+      });
     },
   },
 });

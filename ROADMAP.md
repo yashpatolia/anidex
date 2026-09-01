@@ -9,16 +9,12 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
   strand a user with no way back in — revisit once every account is guaranteed to have at
   least one other verified sign-in method)
 
-## List import from MyAnimeList / AniList
-- Highest-impact feature for adoption — lets someone migrate an existing list instead of starting at zero
-- MAL export format: XML (`animelist.xml`), fields map roughly to our `status`/`score`/`progress`
-- AniList export: JSON via their own export tool, or query their API directly given a username
-- Needs: file upload UI, a parser per source format, a mapping step (MAL's 10-status scale incl. "Plan to Watch" etc. → our `WatchStatus` enum), dedup/upsert against existing entries (don't clobber what's already tracked — same non-destructive principle as quick-add), and a review step before committing (show "X entries will be added/updated" before writing)
-- Anime matching: MAL and AniList use different IDs for the same anime. MAL exports include MAL IDs; need either AniList's `idMal` field (already queryable) to cross-reference, or a title-based fuzzy match against `AnimeTitle` as fallback
-
 ## Public profile pages
-- Shareable read-only view of a user's list at a URL (e.g. `/u/[username]`)
-- Needs: a `username` or slug field on `User` (currently no unique public-facing handle, just `id`/`email`/`name`), a privacy toggle in `profilePrefs` (default private), and a read-only variant of `ProfileView` with the Customize panel stripped
+- Username is done: every `User` has a unique `username` (>=4 chars, `[a-z0-9_]`, see
+  `src/lib/username.ts`) — chosen at registration, auto-generated for Google sign-ups and
+  pre-existing accounts (one-time backfill), editable anytime from Account settings
+- Still needed: the actual `/u/[username]` route, a privacy toggle in `profilePrefs` (default
+  private), and a read-only variant of `ProfileView` with the Customize panel stripped
 - Consider: does the accent-color/section customization carry over to the public view? (Probably yes — it's "their" page.)
 
 ## Recommendations
@@ -32,8 +28,8 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
 - Natural pairing with a notification later (flagged as a bigger bet, not in this batch)
 
 ## UI/UX polish batch
-Flagged 2026-09-01, not yet scoped in detail:
-- Auth/Profile: let a user choose a username (also a prerequisite noted under Public profile pages above, for a `/u/[username]` URL)
+Flagged 2026-09-01, not yet scoped in detail (nothing currently open here — see Public profile
+pages above for the next batch of work):
 
 Also flagged during the original roadmap discussion, not selected for this batch but worth remembering:
 - Notes field on list entries (schema already supports it, `AnimeListEntry.notes`, just needs UI)

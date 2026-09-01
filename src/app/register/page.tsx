@@ -4,9 +4,11 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { isValidUsername } from "@/lib/username";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,13 +24,17 @@ export default function RegisterPage() {
       setError("Passwords don't match.");
       return;
     }
+    if (!isValidUsername(username)) {
+      setError("Username must be 4-24 characters: lowercase letters, numbers, underscore.");
+      return;
+    }
 
     setSubmitting(true);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name: name || undefined }),
+        body: JSON.stringify({ email, password, username, name: name || undefined }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -58,6 +64,16 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Username</span>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase())}
+            placeholder="4-24 chars: a-z, 0-9, _"
+            maxLength={24}
+            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
+          />
+        </label>
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[11px] uppercase tracking-widest text-ash">
             Display name <span className="normal-case text-ash/60">(optional)</span>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { isValidUsername } from "@/lib/username";
 
 function fieldClass() {
   return "border border-line bg-ink px-3 py-2 text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none";
@@ -21,22 +22,30 @@ export function AccountView({
   name,
   bio,
   email,
+  username,
+  usernameAutoAssigned,
   hasPassword,
   providers,
 }: {
   name: string | null;
   bio: string | null;
   email: string | null;
+  username: string | null;
+  usernameAutoAssigned: boolean;
   hasPassword: boolean;
   providers: string[];
 }) {
   const router = useRouter();
 
-  // Display name / bio
+  // Display name / bio / username
+  const initialUsername = username ?? "";
   const [displayName, setDisplayName] = useState(name ?? "");
   const [displayBio, setDisplayBio] = useState(bio ?? "");
+  const [displayUsername, setDisplayUsername] = useState(initialUsername);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   // Change password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -51,14 +60,31 @@ export function AccountView({
   const [deleting, setDeleting] = useState(false);
 
   async function saveProfile() {
-    setProfileSaving(true);
+    setProfileError(null);
     setProfileSaved(false);
+
+    const usernameChanged = displayUsername !== initialUsername;
+    if (usernameChanged && !isValidUsername(displayUsername)) {
+      setProfileError("Username must be 4-24 characters: lowercase letters, numbers, underscore.");
+      return;
+    }
+
+    setProfileSaving(true);
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: displayName, bio: displayBio }),
+        body: JSON.stringify({
+          name: displayName,
+          bio: displayBio,
+          ...(usernameChanged ? { username: displayUsername } : {}),
+        }),
       });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setProfileError(data?.error ?? "Something went wrong.");
+        return;
+      }
       setProfileSaved(true);
       router.refresh();
     } finally {
@@ -122,9 +148,39 @@ export function AccountView({
         {email && <p className="text-sm text-ash">{email}</p>}
       </div>
 
-      {/* Display name / bio */}
+      {/* Display name / bio / username */}
       <section className="flex flex-col gap-4">
         <h2 className="font-display text-lg text-paper">Profile</h2>
+
+        {usernameAutoAssigned && !nudgeDismissed && (
+          <div className="flex items-start justify-between gap-4 border border-line bg-line/20 px-4 py-3">
+            <p className="text-sm text-paper">
+              We picked <span className="font-mono">@{initialUsername}</span> for you — feel free to
+              change it below.
+            </p>
+            <button
+              type="button"
+              onClick={() => setNudgeDismissed(true)}
+              className="flex-shrink-0 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <label className="flex flex-col gap-1.5">
+          <span className={labelClass()}>Username</span>
+          <input
+            value={displayUsername}
+            onChange={(e) => {
+              setDisplayUsername(e.target.value.toLowerCase());
+              setProfileSaved(false);
+            }}
+            maxLength={24}
+            className={`max-w-xs ${fieldClass()}`}
+          />
+        </label>
+
         <div className="flex flex-col gap-4 sm:flex-row">
           <label className="flex flex-1 flex-col gap-1.5">
             <span className={labelClass()}>Display name</span>
@@ -152,6 +208,7 @@ export function AccountView({
             />
           </label>
         </div>
+        {profileError && <p className="font-mono text-xs text-hanko">{profileError}</p>}
         <div className="flex items-center gap-3">
           <button
             type="button"
