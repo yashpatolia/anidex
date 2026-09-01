@@ -171,20 +171,20 @@ type Stats = {
 };
 
 export function ProfileView({
-  name,
+  username,
   bio,
   prefs: initialPrefs,
   entries,
   stats,
 }: {
-  name: string | null;
+  username: string | null;
   bio: string | null;
   prefs: ProfilePrefs;
   entries: Entry[];
   stats: Stats;
 }) {
   const [prefs, setPrefs] = useState(initialPrefs);
-  const displayName = name ?? "";
+  const displayUsername = username ?? "";
   const displayBio = bio ?? "";
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -270,7 +270,7 @@ export function ProfileView({
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-3xl text-paper">
-              {displayName ? `${displayName}'s list` : "Your list"}
+              {displayUsername ? `${displayUsername}'s list` : "Your list"}
             </h1>
             {displayBio && !editing && <p className="max-w-md text-sm text-ash">{displayBio}</p>}
           </div>
@@ -295,7 +295,7 @@ export function ProfileView({
         {editing && (
           <div className="flex flex-col gap-6 border border-line p-5">
             <p className="font-mono text-[11px] text-ash">
-              Display name and bio moved to{" "}
+              Username and bio moved to{" "}
               <Link href="/account" className="text-paper underline underline-offset-2 hover:text-hanko">
                 Account settings
               </Link>

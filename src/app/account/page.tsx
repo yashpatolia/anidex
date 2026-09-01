@@ -15,7 +15,6 @@ export default async function AccountPage() {
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
-      name: true,
       bio: true,
       email: true,
       username: true,
@@ -28,7 +27,6 @@ export default async function AccountPage() {
 
   return (
     <AccountView
-      name={user.name}
       bio={user.bio}
       email={user.email}
       username={user.username}

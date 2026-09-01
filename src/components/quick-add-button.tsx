@@ -86,7 +86,7 @@ export function QuickAddButton({
         type="button"
         onClick={handleToggleClick}
         aria-label={tracked ? "Change list status" : "Add to list"}
-        title={tracked ? "In your list — click to change" : "Add to your list"}
+        title={tracked ? "In your list, click to change" : "Add to your list"}
         disabled={busy}
         className={`flex h-7 w-7 items-center justify-center border-2 font-mono text-sm transition-all duration-200 ${
           tracked

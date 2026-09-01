@@ -22,7 +22,6 @@ const prefsSchema = z.object({
 });
 
 const bodySchema = z.object({
-  name: z.string().trim().max(60).optional(),
   bio: z.string().trim().max(280).nullable().optional(),
   username: z.string().regex(USERNAME_PATTERN, "4-24 characters: lowercase letters, numbers, underscore.").optional(),
   profilePrefs: prefsSchema.optional(),
@@ -47,7 +46,6 @@ export async function PATCH(req: NextRequest) {
       data: username != null ? { ...rest, username, usernameAutoAssigned: false } : rest,
     });
     return NextResponse.json({
-      name: user.name,
       bio: user.bio,
       username: user.username,
       usernameAutoAssigned: user.usernameAutoAssigned,

@@ -19,7 +19,6 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export function AccountView({
-  name,
   bio,
   email,
   username,
@@ -27,7 +26,6 @@ export function AccountView({
   hasPassword,
   providers,
 }: {
-  name: string | null;
   bio: string | null;
   email: string | null;
   username: string | null;
@@ -37,9 +35,8 @@ export function AccountView({
 }) {
   const router = useRouter();
 
-  // Display name / bio / username
+  // Bio / username
   const initialUsername = username ?? "";
-  const [displayName, setDisplayName] = useState(name ?? "");
   const [displayBio, setDisplayBio] = useState(bio ?? "");
   const [displayUsername, setDisplayUsername] = useState(initialUsername);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -75,7 +72,6 @@ export function AccountView({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: displayName,
           bio: displayBio,
           ...(usernameChanged ? { username: displayUsername } : {}),
         }),
@@ -148,14 +144,14 @@ export function AccountView({
         {email && <p className="text-sm text-ash">{email}</p>}
       </div>
 
-      {/* Display name / bio / username */}
+      {/* Username / bio */}
       <section className="flex flex-col gap-4">
         <h2 className="font-display text-lg text-paper">Profile</h2>
 
         {usernameAutoAssigned && !nudgeDismissed && (
           <div className="flex items-start justify-between gap-4 border border-line bg-line/20 px-4 py-3">
             <p className="text-sm text-paper">
-              We picked <span className="font-mono">@{initialUsername}</span> for you — feel free to
+              We picked <span className="font-mono">@{initialUsername}</span> for you. Feel free to
               change it below.
             </p>
             <button
@@ -181,33 +177,19 @@ export function AccountView({
           />
         </label>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <label className="flex flex-1 flex-col gap-1.5">
-            <span className={labelClass()}>Display name</span>
-            <input
-              value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                setProfileSaved(false);
-              }}
-              maxLength={60}
-              className={fieldClass()}
-            />
-          </label>
-          <label className="flex flex-[2] flex-col gap-1.5">
-            <span className={labelClass()}>Bio</span>
-            <input
-              value={displayBio}
-              onChange={(e) => {
-                setDisplayBio(e.target.value);
-                setProfileSaved(false);
-              }}
-              maxLength={280}
-              placeholder="A line about your taste in anime"
-              className={fieldClass()}
-            />
-          </label>
-        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelClass()}>Bio</span>
+          <input
+            value={displayBio}
+            onChange={(e) => {
+              setDisplayBio(e.target.value);
+              setProfileSaved(false);
+            }}
+            maxLength={280}
+            placeholder="A line about your taste in anime"
+            className={fieldClass()}
+          />
+        </label>
         {profileError && <p className="font-mono text-xs text-hanko">{profileError}</p>}
         <div className="flex items-center gap-3">
           <button

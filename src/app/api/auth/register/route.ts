@@ -8,7 +8,6 @@ const bodySchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(200),
   username: z.string().regex(USERNAME_PATTERN, "4-24 characters: lowercase letters, numbers, underscore."),
-  name: z.string().trim().max(60).optional(),
 });
 
 // POST /api/auth/register — real email/password signup. Creates the User
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { email, password, username, name } = parsed.data;
+  const { email, password, username } = parsed.data;
 
   const [existingEmail, existingUsername] = await Promise.all([
     prisma.user.findUnique({ where: { email }, select: { passwordHash: true } }),
@@ -42,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({ data: { email, passwordHash, username, name } });
+  await prisma.user.create({ data: { email, passwordHash, username } });
 
   return NextResponse.json({ ok: true });
 }

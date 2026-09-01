@@ -18,7 +18,7 @@ export default async function ProfilePage() {
   const [user, entries] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, bio: true, profilePrefs: true },
+      select: { username: true, bio: true, profilePrefs: true },
     }),
     prisma.animeListEntry.findMany({
       where: { userId: session.user.id },
@@ -81,7 +81,7 @@ export default async function ProfilePage() {
 
   return (
     <ProfileView
-      name={user?.name ?? null}
+      username={user?.username ?? null}
       bio={user?.bio ?? null}
       prefs={normalizePrefs(user?.profilePrefs)}
       entries={listEntries}

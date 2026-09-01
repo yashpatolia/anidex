@@ -9,7 +9,6 @@ import { isValidUsername } from "@/lib/username";
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,7 +33,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, username, name: name || undefined }),
+        body: JSON.stringify({ email, password, username }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -71,17 +70,6 @@ export default function RegisterPage() {
             onChange={(e) => setUsername(e.target.value.toLowerCase())}
             placeholder="4-24 chars: a-z, 0-9, _"
             maxLength={24}
-            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">
-            Display name <span className="normal-case text-ash/60">(optional)</span>
-          </span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={60}
             className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
           />
         </label>
