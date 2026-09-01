@@ -71,7 +71,9 @@ refresh popularity/titles — it upserts, not replaces.
 1. Install Docker + the Compose plugin on the VPS.
 2. Copy `docker-compose.yml` to a directory on the VPS (e.g. `/opt/anime-list`).
 3. Copy `.env.production.example` to `.env` in that same directory and fill in real
-   values (DB password, `NEXTAUTH_SECRET`, Google OAuth creds, domain).
+   values (DB password, `NEXTAUTH_SECRET`, Google OAuth creds, domain, `MAL_CLIENT_ID`
+   — register a Non-Commercial app at https://myanimelist.net/apiconfig to get one;
+   powers the "import by MAL username" option, not required for anything else to work).
 4. `docker compose up -d` once manually to confirm it starts.
 
 ### Required GitHub repo secrets
