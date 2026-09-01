@@ -32,6 +32,7 @@ export function AddToListControl({
 }) {
   const [entry, setEntry] = useState<Entry | null>(initialEntry);
   const [saving, setSaving] = useState(false);
+  const [progressInput, setProgressInput] = useState(String(initialEntry?.progress ?? 0));
   const router = useRouter();
 
   // Next's client-side Router Cache would otherwise keep showing whatever
@@ -40,6 +41,7 @@ export function AddToListControl({
   // not a stale snapshot from before the edit.
   async function save(next: Entry) {
     setEntry(next);
+    setProgressInput(String(next.progress));
     setSaving(true);
     try {
       await fetch("/api/list", {
@@ -57,6 +59,29 @@ export function AddToListControl({
     setEntry(null);
     await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
     router.refresh();
+  }
+
+  // Marking something Completed almost always means "I watched all of it" —
+  // jump progress to the full episode count rather than leaving it wherever
+  // it happened to be, so the two rarely-desired states of "Completed" with
+  // partial progress don't need a separate manual bump every time.
+  function chooseStatus(status: WatchStatus) {
+    if (!entry) return;
+    const progress = status === "COMPLETED" && episodes ? episodes : entry.progress;
+    save({ ...entry, status, progress });
+  }
+
+  function commitProgress() {
+    if (!entry) return;
+    const parsed = Number.parseInt(progressInput, 10);
+    const clamped = Number.isFinite(parsed)
+      ? Math.max(0, episodes != null ? Math.min(episodes, parsed) : parsed)
+      : entry.progress;
+    if (clamped === entry.progress) {
+      setProgressInput(String(clamped)); // revert an invalid/unchanged typed value
+      return;
+    }
+    save({ ...entry, progress: clamped });
   }
 
   if (!entry) {
@@ -78,7 +103,7 @@ export function AddToListControl({
           <button
             key={opt.value}
             type="button"
-            onClick={() => save({ ...entry, status: opt.value })}
+            onClick={() => chooseStatus(opt.value)}
             className={`border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wide transition-colors ${
               entry.status === opt.value
                 ? "border-hanko bg-hanko text-paper"
@@ -120,9 +145,21 @@ export function AddToListControl({
         >
           −
         </button>
-        <span className="font-mono text-xs text-paper">
-          {entry.progress} / {episodes ?? "?"}
-        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={episodes ?? undefined}
+          value={progressInput}
+          onChange={(e) => setProgressInput(e.target.value)}
+          onBlur={commitProgress}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          aria-label="Episodes watched"
+          className="w-12 border border-line bg-transparent px-1.5 py-1 text-center font-mono text-xs text-paper focus:border-hanko focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <span className="font-mono text-xs text-paper">/ {episodes ?? "?"}</span>
         <button
           type="button"
           onClick={() =>

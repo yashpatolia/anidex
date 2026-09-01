@@ -118,13 +118,26 @@ export default async function AnimeDetailPage({
               )}
             </div>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-widest text-ash">
-              {anime.format && <span>{FORMAT_LABELS[anime.format] ?? anime.format}</span>}
-              {anime.episodes && <span>{anime.episodes} episodes</span>}
-              {anime.status && <span>{STATUS_LABELS[anime.status] ?? anime.status}</span>}
-              {anime.seasonYear && <span>{anime.seasonYear}</span>}
-              {studio && <span>{studio}</span>}
-              {score != null && <span className="text-hanko">{score}/10</span>}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 font-mono text-xs uppercase tracking-widest text-ash">
+              {[
+                anime.format && <span key="format">{FORMAT_LABELS[anime.format] ?? anime.format}</span>,
+                anime.episodes && <span key="episodes">{anime.episodes} episodes</span>,
+                anime.status && <span key="status">{STATUS_LABELS[anime.status] ?? anime.status}</span>,
+                anime.seasonYear && <span key="year">{anime.seasonYear}</span>,
+                studio && <span key="studio">{studio}</span>,
+                score != null && (
+                  <span key="score" className="text-hanko">
+                    {score}/10
+                  </span>
+                ),
+              ]
+                .filter(Boolean)
+                .map((node, i) => (
+                  <span key={i} className="flex items-center gap-2">
+                    {i > 0 && <span aria-hidden="true">·</span>}
+                    {node}
+                  </span>
+                ))}
             </div>
 
             {anime.genres.length > 0 && (
