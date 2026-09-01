@@ -6,19 +6,44 @@ import { browseWithSearch } from "@/lib/browse";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { BrowseFilters } from "@/components/browse-filters";
+import { SkeletonGrid } from "@/components/skeleton";
 
 export const metadata: Metadata = {
   title: "Browse",
 };
 
+type Params = Record<string, string | undefined>;
+
 export default async function BrowsePage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Params>;
 }) {
   const params = await searchParams;
   const page = Number(params.page ?? "1") || 1;
 
+  return (
+    <main className="flex w-full flex-col gap-8 px-8 py-12 2xl:px-16">
+      <header className="flex flex-col gap-6 border-b border-line pb-8">
+        <h1 className="font-display text-3xl text-paper">Browse</h1>
+        <Suspense fallback={null}>
+          <BrowseFilters />
+        </Suspense>
+      </header>
+
+      {/* The header above has no data dependency, so it should never wait
+          on AniList — only the results themselves suspend. The key forces
+          a fresh suspense (and skeleton) per distinct query instead of
+          silently keeping the previous page's results on screen while the
+          new ones load. */}
+      <Suspense key={JSON.stringify(params)} fallback={<SkeletonGrid />}>
+        <BrowseResults params={params} page={page} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function BrowseResults({ params, page }: { params: Params; page: number }) {
   const [session, { media, pageInfo }] = await Promise.all([
     auth(),
     browseWithSearch({
@@ -43,14 +68,7 @@ export default async function BrowsePage({
   }
 
   return (
-    <main className="flex w-full flex-col gap-8 px-8 py-12 2xl:px-16">
-      <header className="flex flex-col gap-6 border-b border-line pb-8">
-        <h1 className="font-display text-3xl text-paper">Browse</h1>
-        <Suspense fallback={null}>
-          <BrowseFilters />
-        </Suspense>
-      </header>
-
+    <>
       {media.length === 0 ? (
         <p className="py-16 text-center text-sm text-ash">
           Nothing matches those filters. Try loosening one.
@@ -80,6 +98,6 @@ export default async function BrowsePage({
           <span />
         )}
       </div>
-    </main>
+    </>
   );
 }

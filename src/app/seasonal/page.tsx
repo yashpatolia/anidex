@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getSeasonalAnime, getCurrentSeason, SEASONS } from "@/lib/anilist";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { SeasonalSwitcher } from "@/components/seasonal-switcher";
+import { SkeletonGrid } from "@/components/skeleton";
 
 export const metadata: Metadata = {
   title: "Seasonal",
@@ -20,17 +22,7 @@ export default async function SeasonalPage({
   const season = params.season || current.season;
   const year = params.year ? Number(params.year) : current.year;
   const page = Number(params.page ?? "1") || 1;
-
-  const [session, { media, pageInfo }] = await Promise.all([
-    auth(),
-    getSeasonalAnime(season, year, page, 30),
-  ]);
-  const trackedIds = session?.user ? await getTrackedAnilistIds(session.user.id) : new Set<number>();
   const seasonLabel = SEASONS.find((s) => s.value === season)?.label ?? season;
-
-  function pageHref(targetPage: number) {
-    return `/seasonal?season=${season}&year=${year}&page=${targetPage}`;
-  }
 
   return (
     <main className="flex w-full flex-col gap-8 px-8 py-12 2xl:px-16">
@@ -41,6 +33,30 @@ export default async function SeasonalPage({
         <SeasonalSwitcher season={season} year={year} />
       </header>
 
+      {/* Header above has no data dependency — only the results suspend.
+          Keyed per season/year/page so switching seasons always shows the
+          skeleton for the new query instead of the previous season's grid
+          hanging around while the new one loads. */}
+      <Suspense key={`${season}-${year}-${page}`} fallback={<SkeletonGrid />}>
+        <SeasonalResults season={season} year={year} page={page} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function SeasonalResults({ season, year, page }: { season: string; year: number; page: number }) {
+  const [session, { media, pageInfo }] = await Promise.all([
+    auth(),
+    getSeasonalAnime(season, year, page, 30),
+  ]);
+  const trackedIds = session?.user ? await getTrackedAnilistIds(session.user.id) : new Set<number>();
+
+  function pageHref(targetPage: number) {
+    return `/seasonal?season=${season}&year=${year}&page=${targetPage}`;
+  }
+
+  return (
+    <>
       {media.length === 0 ? (
         <p className="py-16 text-center text-sm text-ash">Nothing found for this season.</p>
       ) : (
@@ -68,6 +84,6 @@ export default async function SeasonalPage({
           <span />
         )}
       </div>
-    </main>
+    </>
   );
 }
