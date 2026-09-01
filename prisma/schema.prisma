@@ -22,6 +22,13 @@ model User {
   // Only set for credentials (email/password) accounts. Null for OAuth-only users.
   passwordHash  String?
 
+  // Profile customization.
+  bio          String?
+  // Shape: ProfilePrefs from src/lib/profile-prefs.ts (accent color, section
+  // visibility/order, which stats show). Free-form JSON so it can evolve
+  // without a migration each time.
+  profilePrefs Json?
+
   accounts  Account[]
   sessions  Session[]
   listEntries AnimeListEntry[]
@@ -77,9 +84,38 @@ enum WatchStatus {
   REWATCHING
 }
 
+// Read-through cache of AniList metadata, keyed by their media id. Populated
+// lazily: the first request for a given anime fetches from AniList and stores
+// it here; every later request (from any user) is served from this table
+// until it goes stale. See src/lib/anime-cache.ts.
+model AnimeCache {
+  anilistId Int      @id
+  data      Json
+  fetchedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A lightweight, locally-searchable mirror of AniList's title catalog: just
+// enough (id, titles, popularity) to do real substring search ourselves.
+// AniList's own `search` field is a fuzzy/similarity search that silently
+// returns nothing for short fragments (e.g. "toni" finds nothing, "tonika"
+// does) — there's no way to fix that from our side of their API, so we
+// search this table instead and hydrate the matches via AnimeCache/AniList
+// for actual display. Populated by scripts/sync-anime-titles.ts.
+model AnimeTitle {
+  anilistId  Int     @id
+  romaji     String?
+  english    String?
+  native     String?
+  popularity Int     @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@index([romaji])
+  @@index([english])
+}
+
 // A user's entry for one anime. Anime metadata itself (title, cover art,
-// episode count, etc.) is NOT stored here — it's fetched live from the
-// AniList API by anilistId and cached client-side/CDN-side, not in our DB.
+// episode count, etc.) is NOT stored here — see AnimeCache above.
 model AnimeListEntry {
   id        String      @id @default(cuid())
   userId    String
