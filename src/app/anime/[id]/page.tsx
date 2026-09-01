@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCachedAnimeById } from "@/lib/anime-cache";
 import { AddToListControl } from "@/components/add-to-list-control";
+import { ScrollRail } from "@/components/scroll-rail";
 
 function plainSynopsis(html: string | null): string {
   if (!html) return "";
@@ -139,7 +140,7 @@ export default async function AnimeDetailPage({
         {cast.length > 0 && (
           <section className="flex flex-col gap-4 border-t border-line pt-8">
             <h2 className="font-mono text-xs uppercase tracking-widest text-ash">Cast</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ScrollRail>
               {cast.map(({ node: character, voiceActors }) => {
                 const va = voiceActors[0];
                 return (
@@ -173,14 +174,14 @@ export default async function AnimeDetailPage({
                   </div>
                 );
               })}
-            </div>
+            </ScrollRail>
           </section>
         )}
 
         {relatedAnime.length > 0 && (
           <section className="flex flex-col gap-4 border-t border-line pt-8">
             <h2 className="font-mono text-xs uppercase tracking-widest text-ash">Related</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ScrollRail>
               {relatedAnime.map(({ relationType, node }) => {
                 const relTitle = node.title.english ?? node.title.romaji ?? "Untitled";
                 return (
@@ -207,7 +208,7 @@ export default async function AnimeDetailPage({
                   </Link>
                 );
               })}
-            </div>
+            </ScrollRail>
           </section>
         )}
       </div>
