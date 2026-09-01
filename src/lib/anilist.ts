@@ -205,31 +205,30 @@ export async function getAnimeById(id: number): Promise<AnilistMediaDetail | nul
   }
 }
 
-// Returns the full detail shape (not just the light card fields) so that
-// whatever calls this can also feed src/lib/anime-cache.ts a cache entry
-// that's reusable by the anime detail page too, not just list/card views.
-export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
+// Shared batching engine behind getAnimeByIds and getAnimeCardsByIds below.
+// AniList clamps any id_in lookup to 50 results per page regardless of the
+// requested perPage — silently, no error — so anything past the first 50
+// ids in a single request would just vanish from the response. Multiple
+// 50-item chunks can still share one HTTP request via GraphQL aliases
+// (same trick as getLandingRails above), meaningfully cutting requests for
+// a big list. ALIASES_PER_REQUEST is deliberately conservative (not "every
+// chunk in one request") for the detail-fields caller specifically, since
+// those carry the full nested shape — characters, relations, studios — and
+// AniList doesn't document a query complexity cap to size against.
+async function getMediaByIds<T>(
+  ids: number[],
+  fields: string,
+  aliasesPerRequest: number,
+): Promise<T[]> {
   if (ids.length === 0) return [];
 
-  // AniList clamps any id_in lookup to 50 results per page regardless of
-  // the requested perPage — silently, no error — so anything past the
-  // first 50 ids in a single request would just vanish from the response.
   const CHUNK = 50;
   const chunks: number[][] = [];
   for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
 
-  // Each chunk still needs its own Page/media selection, but multiple of
-  // them can share one HTTP request via GraphQL aliases (same trick as
-  // getLandingRails above) — meaningfully fewer requests against AniList's
-  // rate limit for a big list (a 300-entry Profile is 6 chunks: 2 requests
-  // instead of 6). Kept deliberately small (not "all chunks in one
-  // request") since these carry the full nested detail shape — characters,
-  // relations, studios — unlike the landing page's light fields; no
-  // documented complexity cap to size against, so staying conservative.
-  const ALIASES_PER_REQUEST = 4;
   const groups: number[][][] = [];
-  for (let i = 0; i < chunks.length; i += ALIASES_PER_REQUEST) {
-    groups.push(chunks.slice(i, i + ALIASES_PER_REQUEST));
+  for (let i = 0; i < chunks.length; i += aliasesPerRequest) {
+    groups.push(chunks.slice(i, i + aliasesPerRequest));
   }
 
   const results = await Promise.all(
@@ -241,7 +240,7 @@ export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]
               (_, i) => `
             c${i}: Page(perPage: $perPage${i}) {
               media(id_in: $ids${i}, type: ANIME) {
-                ${MEDIA_DETAIL_FIELDS}
+                ${fields}
               }
             }`,
             )
@@ -254,11 +253,27 @@ export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]
         variables[`perPage${i}`] = chunk.length;
       });
 
-      const data = await anilistFetch<Record<string, { media: AnilistMediaDetail[] }>>(query, variables);
+      const data = await anilistFetch<Record<string, { media: T[] }>>(query, variables);
       return group.flatMap((_, i) => data[`c${i}`].media);
     }),
   );
   return results.flat();
+}
+
+// Full detail shape (characters, relations, studios) — for the anime
+// detail page, and anywhere else that genuinely needs it. Prefer
+// getAnimeCardsByIds below for list/card views; it's a much lighter
+// payload for the same ids.
+export function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
+  return getMediaByIds<AnilistMediaDetail>(ids, MEDIA_DETAIL_FIELDS, 4);
+}
+
+// Light card fields only (title, cover, genres, score, etc.) — no
+// characters/relations/studios. For Browse/Seasonal/Profile/search-style
+// views, which never render that data anyway. Much smaller payload than
+// getAnimeByIds for the same ids, so more chunks safely share one request.
+export function getAnimeCardsByIds(ids: number[]): Promise<AnilistMedia[]> {
+  return getMediaByIds<AnilistMedia>(ids, MEDIA_FIELDS, 10);
 }
 
 export const SEASONS = [

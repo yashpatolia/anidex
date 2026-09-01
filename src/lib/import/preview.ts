@@ -3,7 +3,7 @@
 // ones the current user already has tracked (so the UI can distinguish new
 // additions from updates before anything is written).
 import { prisma } from "@/lib/prisma";
-import { getCachedAnimeByIds } from "@/lib/anime-cache";
+import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 import type { ResolvedEntry } from "./resolve";
 
 export type PreviewRow = {
@@ -19,7 +19,7 @@ export type PreviewRow = {
 export async function buildPreview(userId: string, resolved: ResolvedEntry[]) {
   const ids = resolved.map((e) => e.anilistId);
   const [media, existing, totalTracked] = await Promise.all([
-    getCachedAnimeByIds(ids),
+    getCachedAnimeCardsByIds(ids),
     prisma.animeListEntry.findMany({
       where: { userId, anilistId: { in: ids } },
       select: { anilistId: true },

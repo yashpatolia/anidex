@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchLocalTitleIds } from "@/lib/anime-title-index";
-import { getCachedAnimeByIds } from "@/lib/anime-cache";
+import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 
 // GET /api/search/quick?q=... — top 5 closest matches for the nav search
 // dropdown. Backed by our local title index (real substring search), not
@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const ids = await searchLocalTitleIds(q);
-    const media = await getCachedAnimeByIds(ids.slice(0, 5));
-    // getCachedAnimeByIds doesn't preserve relevance order — restore it.
+    const media = await getCachedAnimeCardsByIds(ids.slice(0, 5));
+    // getCachedAnimeCardsByIds doesn't preserve relevance order — restore it.
     const byId = new Map(media.map((m) => [m.id, m]));
     const results = ids
       .slice(0, 5)

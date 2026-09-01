@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCachedAnimeByIds } from "@/lib/anime-cache";
+import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 import { normalizePrefs } from "@/lib/profile-prefs";
 import { ProfileView } from "@/components/profile-view";
 
@@ -48,7 +48,7 @@ export default async function ProfilePage() {
     );
   }
 
-  const media = await getCachedAnimeByIds(entries.map((e) => e.anilistId));
+  const media = await getCachedAnimeCardsByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
 
   const listEntries = entries

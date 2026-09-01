@@ -3,11 +3,11 @@
 // instead of AniList's fuzzy search, hydrates the matches, and applies the
 // rest of the filters/sort/pagination in-app. With no search term, this is
 // just browseAnime() — AniList's own filtering is fine for that case.
-import { browseAnime, type BrowseFilters, type AnilistMediaDetail } from "@/lib/anilist";
+import { browseAnime, type BrowseFilters, type AnilistMedia } from "@/lib/anilist";
 import { searchLocalTitleIds } from "@/lib/anime-title-index";
-import { getCachedAnimeByIds } from "@/lib/anime-cache";
+import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 
-type Sorter = (a: AnilistMediaDetail, b: AnilistMediaDetail) => number;
+type Sorter = (a: AnilistMedia, b: AnilistMedia) => number;
 
 const SORTERS: Record<string, Sorter> = {
   POPULARITY_DESC: (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0),
@@ -33,7 +33,7 @@ export async function browseWithSearch(filters: BrowseFilters) {
     return browseAnime(filters);
   }
 
-  const hydrated = await getCachedAnimeByIds(candidateIds);
+  const hydrated = await getCachedAnimeCardsByIds(candidateIds);
 
   const filtered = hydrated.filter((m) => {
     if (genres?.length && !genres.some((g) => m.genres.includes(g))) return false;
