@@ -6,7 +6,7 @@ import { browseWithSearch } from "@/lib/browse";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { BrowseFilters } from "@/components/browse-filters";
-import { SkeletonGrid } from "@/components/skeleton";
+import { PageLoading } from "@/components/page-loading";
 
 export const metadata: Metadata = {
   title: "Browse",
@@ -33,10 +33,10 @@ export default async function BrowsePage({
 
       {/* The header above has no data dependency, so it should never wait
           on AniList — only the results themselves suspend. The key forces
-          a fresh suspense (and skeleton) per distinct query instead of
-          silently keeping the previous page's results on screen while the
-          new ones load. */}
-      <Suspense key={JSON.stringify(params)} fallback={<SkeletonGrid />}>
+          a fresh suspense (and loading screen) per distinct query instead
+          of silently keeping the previous page's results on screen while
+          the new ones load. */}
+      <Suspense key={JSON.stringify(params)} fallback={<PageLoading />}>
         <BrowseResults params={params} page={page} />
       </Suspense>
     </main>

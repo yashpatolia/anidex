@@ -6,7 +6,7 @@ import { getSeasonalAnime, getCurrentSeason, SEASONS } from "@/lib/anilist";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { SeasonalSwitcher } from "@/components/seasonal-switcher";
-import { SkeletonGrid } from "@/components/skeleton";
+import { PageLoading } from "@/components/page-loading";
 
 export const metadata: Metadata = {
   title: "Seasonal",
@@ -35,9 +35,9 @@ export default async function SeasonalPage({
 
       {/* Header above has no data dependency — only the results suspend.
           Keyed per season/year/page so switching seasons always shows the
-          skeleton for the new query instead of the previous season's grid
-          hanging around while the new one loads. */}
-      <Suspense key={`${season}-${year}-${page}`} fallback={<SkeletonGrid />}>
+          loading screen for the new query instead of the previous season's
+          grid hanging around while the new one loads. */}
+      <Suspense key={`${season}-${year}-${page}`} fallback={<PageLoading />}>
         <SeasonalResults season={season} year={year} page={page} />
       </Suspense>
     </main>

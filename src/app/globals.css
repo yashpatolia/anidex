@@ -35,3 +35,16 @@ button:not(:disabled) {
 .font-display {
   font-weight: 700;
 }
+
+/* Route loading.tsx screens (see src/components/page-loading.tsx) fade in
+   instead of popping in instantly — a plain dark screen appearing with zero
+   transition reads as a flash/flicker; fading it in over a beat makes a
+   slow navigation feel like a deliberate dim rather than a glitch. */
+@keyframes page-loading-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
