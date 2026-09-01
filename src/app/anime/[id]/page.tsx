@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCachedAnimeById } from "@/lib/anime-cache";
@@ -39,6 +40,22 @@ const RELATION_LABELS: Record<string, string> = {
   PARENT: "Parent story",
   SPIN_OFF: "Spin-off",
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const anilistId = Number(id);
+  if (!Number.isInteger(anilistId)) return {};
+
+  const anime = await getCachedAnimeById(anilistId);
+  if (!anime) return {};
+
+  const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
+  return { title };
+}
 
 export default async function AnimeDetailPage({
   params,

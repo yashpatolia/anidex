@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { browseWithSearch } from "@/lib/browse";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { BrowseFilters } from "@/components/browse-filters";
+
+export const metadata: Metadata = {
+  title: "Browse",
+};
 
 export default async function BrowsePage({
   searchParams,

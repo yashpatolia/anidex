@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCachedAnimeByIds } from "@/lib/anime-cache";
 import { normalizePrefs } from "@/lib/profile-prefs";
 import { ProfileView } from "@/components/profile-view";
+
+export const metadata: Metadata = {
+  title: "Profile",
+};
 
 export default async function ProfilePage() {
   const session = await auth();

@@ -17,7 +17,10 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AniDex: an anime record",
+  title: {
+    default: "AniDex: an anime record",
+    template: "AniDex - %s",
+  },
   description: "A record of everything you've watched.",
 };
 

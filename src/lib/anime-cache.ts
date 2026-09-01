@@ -6,6 +6,7 @@
 //
 // Server-only: imports Prisma directly. Never import this from a "use
 // client" component (import the plain types from "@/lib/anilist" instead).
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getAnimeById as fetchAnimeById, getAnimeByIds as fetchAnimeByIds } from "@/lib/anilist";
 import type { AnilistMediaDetail } from "@/lib/anilist";
@@ -35,7 +36,11 @@ async function writeCached(entries: AnilistMediaDetail[]): Promise<void> {
   );
 }
 
-export async function getCachedAnimeById(id: number): Promise<AnilistMediaDetail | null> {
+// Wrapped in React's cache() so a page and its generateMetadata calling
+// this with the same id (same render pass) share one fetch instead of two.
+export const getCachedAnimeById = cache(async function getCachedAnimeById(
+  id: number,
+): Promise<AnilistMediaDetail | null> {
   const cached = await readCached([id]);
   const hit = cached.get(id);
   if (hit && isFresh(hit.fetchedAt)) return hit.data;
@@ -51,7 +56,7 @@ export async function getCachedAnimeById(id: number): Promise<AnilistMediaDetail
     if (hit) return hit.data;
     throw err;
   }
-}
+});
 
 export async function getCachedAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
   const uniqueIds = [...new Set(ids)];

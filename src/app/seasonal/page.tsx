@@ -1,9 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getSeasonalAnime, getCurrentSeason, SEASONS } from "@/lib/anilist";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeCard } from "@/components/anime-card";
 import { SeasonalSwitcher } from "@/components/seasonal-switcher";
+
+export const metadata: Metadata = {
+  title: "Seasonal",
+};
 
 export default async function SeasonalPage({
   searchParams,
