@@ -9,14 +9,6 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
   strand a user with no way back in — revisit once every account is guaranteed to have at
   least one other verified sign-in method)
 
-## Public profile pages
-- Username is done: every `User` has a unique `username` (>=4 chars, `[a-z0-9_]`, see
-  `src/lib/username.ts`) — chosen at registration, auto-generated for Google sign-ups and
-  pre-existing accounts (one-time backfill), editable anytime from Account settings
-- Still needed: the actual `/u/[username]` route, a privacy toggle in `profilePrefs` (default
-  private), and a read-only variant of `ProfileView` with the Customize panel stripped
-- Consider: does the accent-color/section customization carry over to the public view? (Probably yes — it's "their" page.)
-
 ## Recommendations
 - "Because you completed X" on Profile or a dedicated section
 - Source data: AniList's `recommendations` connection on `Media` (peer-sourced, already exists on their API, not yet in our `MEDIA_DETAIL_FIELDS`), cross-referenced against what's already tracked (exclude those)
