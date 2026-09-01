@@ -16,11 +16,16 @@ const bodySchema = z.object({
     )
     .min(1)
     .max(10_000),
-  // Default (false): only create entries for anime not already tracked, so
-  // an import can never silently overwrite a user's existing score/progress
-  // — same non-destructive principle as quick-add. Set true to let the
-  // imported source's data replace what's already there.
-  overwriteExisting: z.boolean().default(false),
+  // skipExisting (default): only create entries for anime not already
+  // tracked — an import can never silently overwrite existing score/
+  // progress, same non-destructive principle as quick-add.
+  // overwriteExisting: also update entries already on the list, but never
+  // touches/deletes anything the import doesn't mention.
+  // replaceAll: overwriteExisting's behavior, PLUS deletes every entry on
+  // the user's list that isn't in this import — the only mode where the
+  // resulting list becomes an exact copy of the imported one. Destructive;
+  // the UI requires an explicit confirmation before sending this.
+  mode: z.enum(["skipExisting", "overwriteExisting", "replaceAll"]).default("skipExisting"),
 });
 
 // POST /api/import/commit — write a previously-previewed set of entries.
@@ -35,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { entries, overwriteExisting } = parsed.data;
+  const { entries, mode } = parsed.data;
 
   const existing = await prisma.animeListEntry.findMany({
     where: { userId, anilistId: { in: entries.map((e) => e.anilistId) } },
@@ -43,7 +48,15 @@ export async function POST(req: NextRequest) {
   });
   const existingIds = new Set(existing.map((e) => e.anilistId));
 
-  const toWrite = overwriteExisting ? entries : entries.filter((e) => !existingIds.has(e.anilistId));
+  const toWrite = mode === "skipExisting" ? entries.filter((e) => !existingIds.has(e.anilistId)) : entries;
+
+  let deleted = 0;
+  if (mode === "replaceAll") {
+    const { count } = await prisma.animeListEntry.deleteMany({
+      where: { userId, anilistId: { notIn: entries.map((e) => e.anilistId) } },
+    });
+    deleted = count;
+  }
 
   let created = 0;
   let updated = 0;
@@ -58,5 +71,5 @@ export async function POST(req: NextRequest) {
     else updated++;
   }
 
-  return NextResponse.json({ created, updated, skipped: entries.length - toWrite.length });
+  return NextResponse.json({ created, updated, deleted, skipped: entries.length - toWrite.length });
 }

@@ -20,10 +20,13 @@ type PreviewResult = {
   rows: PreviewRow[];
   newCount: number;
   existingCount: number;
+  notInImportCount: number;
   unmatched: UnmatchedEntry[];
 };
 
-type CommitResult = { created: number; updated: number; skipped: number };
+type CommitResult = { created: number; updated: number; deleted: number; skipped: number };
+
+type Mode = "skipExisting" | "overwriteExisting" | "replaceAll";
 
 const STATUS_LABELS: Record<string, string> = {
   WATCHING: "Watching",
@@ -43,7 +46,7 @@ export function ImportView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [mode, setMode] = useState<Mode>("skipExisting");
   const [committing, setCommitting] = useState(false);
   const [result, setResult] = useState<CommitResult | null>(null);
 
@@ -51,6 +54,7 @@ export function ImportView() {
     setPreview(null);
     setResult(null);
     setError(null);
+    setMode("skipExisting");
   }
 
   function switchSource(next: Source) {
@@ -104,6 +108,16 @@ export function ImportView() {
 
   async function handleCommit() {
     if (!preview) return;
+
+    if (mode === "replaceAll" && preview.notInImportCount > 0) {
+      const ok = window.confirm(
+        `This will permanently delete ${preview.notInImportCount} ${
+          preview.notInImportCount === 1 ? "entry" : "entries"
+        } currently on your list that aren't in this import. This can't be undone. Continue?`,
+      );
+      if (!ok) return;
+    }
+
     setCommitting(true);
     setError(null);
     try {
@@ -117,7 +131,7 @@ export function ImportView() {
             score: r.score,
             progress: r.progress,
           })),
-          overwriteExisting,
+          mode,
         }),
       });
       const data = await res.json();
@@ -278,16 +292,62 @@ export function ImportView() {
             </details>
           )}
 
-          {preview.existingCount > 0 && (
-            <label className="flex items-center gap-2 text-xs text-ash">
-              <input
-                type="checkbox"
-                checked={overwriteExisting}
-                onChange={(e) => setOverwriteExisting(e.target.checked)}
-                className="accent-hanko"
-              />
-              Overwrite the {preview.existingCount} already on my list with this data
-            </label>
+          {preview.rows.length > 0 && (
+            <fieldset className="flex flex-col gap-2.5">
+              <legend className="mb-1 font-mono text-[11px] uppercase tracking-widest text-ash">
+                What to do with entries already on your list
+              </legend>
+              <label className="flex items-start gap-2 text-xs text-paper">
+                <input
+                  type="radio"
+                  name="import-mode"
+                  checked={mode === "skipExisting"}
+                  onChange={() => setMode("skipExisting")}
+                  className="mt-0.5 accent-hanko"
+                />
+                <span>
+                  Only add new entries
+                  <span className="block text-ash">
+                    Anything already tracked is left exactly as-is. Nothing is ever deleted.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-paper">
+                <input
+                  type="radio"
+                  name="import-mode"
+                  checked={mode === "overwriteExisting"}
+                  onChange={() => setMode("overwriteExisting")}
+                  className="mt-0.5 accent-hanko"
+                />
+                <span>
+                  Add new, and update existing entries with this data
+                  <span className="block text-ash">
+                    Status/score/progress get replaced for the {preview.existingCount} already
+                    tracked. Still never deletes anything.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-paper">
+                <input
+                  type="radio"
+                  name="import-mode"
+                  checked={mode === "replaceAll"}
+                  onChange={() => setMode("replaceAll")}
+                  className="mt-0.5 accent-hanko"
+                />
+                <span>
+                  Replace my entire list with this import
+                  <span className="block text-hanko">
+                    {preview.notInImportCount > 0
+                      ? `Deletes ${preview.notInImportCount} ${
+                          preview.notInImportCount === 1 ? "entry" : "entries"
+                        } currently on your list that aren't in this import. Can't be undone.`
+                      : "Nothing to delete — everything you track is already in this import."}
+                  </span>
+                </span>
+              </label>
+            </fieldset>
           )}
 
           {preview.rows.length > 0 && (
@@ -299,7 +359,9 @@ export function ImportView() {
             >
               {committing
                 ? "Importing…"
-                : `Import ${overwriteExisting ? preview.rows.length : preview.newCount} entries`}
+                : mode === "skipExisting"
+                  ? `Import ${preview.newCount} entries`
+                  : `Import ${preview.rows.length} entries`}
             </button>
           )}
         </div>
@@ -309,6 +371,7 @@ export function ImportView() {
         <div className="flex flex-col gap-4 border-t border-line pt-6">
           <p className="text-sm text-paper">
             Done — {result.created} added, {result.updated} updated
+            {result.deleted > 0 ? `, ${result.deleted} deleted` : ""}
             {result.skipped > 0 ? `, ${result.skipped} left as-is` : ""}.
           </p>
           <Link

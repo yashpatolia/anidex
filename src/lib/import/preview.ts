@@ -18,12 +18,13 @@ export type PreviewRow = {
 
 export async function buildPreview(userId: string, resolved: ResolvedEntry[]) {
   const ids = resolved.map((e) => e.anilistId);
-  const [media, existing] = await Promise.all([
+  const [media, existing, totalTracked] = await Promise.all([
     getCachedAnimeByIds(ids),
     prisma.animeListEntry.findMany({
       where: { userId, anilistId: { in: ids } },
       select: { anilistId: true },
     }),
+    prisma.animeListEntry.count({ where: { userId } }),
   ]);
 
   const mediaById = new Map(media.map((m) => [m.id, m]));
@@ -42,9 +43,15 @@ export async function buildPreview(userId: string, resolved: ResolvedEntry[]) {
     };
   });
 
+  const existingCount = rows.filter((r) => r.alreadyTracked).length;
+
   return {
     rows,
     newCount: rows.filter((r) => !r.alreadyTracked).length,
-    existingCount: rows.filter((r) => r.alreadyTracked).length,
+    existingCount,
+    // How many entries currently on the user's list are NOT in this import
+    // — i.e. what "Replace my entire list" would delete. Computed from the
+    // total count rather than a second big query.
+    notInImportCount: Math.max(0, totalTracked - existingCount),
   };
 }
