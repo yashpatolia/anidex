@@ -292,6 +292,83 @@ export const BROWSE_SORTS = [
   { value: "START_DATE_DESC", label: "Newest" },
 ] as const;
 
+// --- List import support (src/app/import) ---
+
+// AniList tracks each anime's MyAnimeList id too, so a MAL export's numeric
+// ids can be resolved to our (AniList) ids in bulk without any fuzzy
+// matching. Returns malId -> anilistId for whichever of the given ids
+// AniList actually has a match for; ids with no match are simply absent.
+export async function getAnilistIdsByMalIds(malIds: number[]): Promise<Map<number, number>> {
+  const result = new Map<number, number>();
+  if (malIds.length === 0) return result;
+
+  // AniList clamps any id_in-style lookup to 50 results per page.
+  const CHUNK = 50;
+  for (let i = 0; i < malIds.length; i += CHUNK) {
+    const chunk = malIds.slice(i, i + CHUNK);
+    const query = `
+      query ($ids: [Int]) {
+        Page(perPage: ${chunk.length}) {
+          media(idMal_in: $ids, type: ANIME) {
+            id
+            idMal
+          }
+        }
+      }
+    `;
+    const data = await anilistFetch<{ Page: { media: { id: number; idMal: number | null }[] } }>(
+      query,
+      { ids: chunk },
+    );
+    for (const m of data.Page.media) {
+      if (m.idMal != null) result.set(m.idMal, m.id);
+    }
+  }
+  return result;
+}
+
+export type AnilistListEntry = {
+  anilistId: number;
+  status: string; // MediaListStatus: CURRENT/PLANNING/COMPLETED/DROPPED/PAUSED/REPEATING
+  score: number; // normalized to a 0-10 scale, 0 = unscored
+  progress: number;
+};
+
+// Fetches a public AniList user's full anime list via their username — no
+// auth required, this is how AniList's own "export" works too. Throws if
+// the username doesn't exist or the profile/list is private.
+export async function getAnilistUserList(username: string): Promise<AnilistListEntry[]> {
+  const query = `
+    query ($username: String) {
+      MediaListCollection(userName: $username, type: ANIME) {
+        lists {
+          entries {
+            status
+            progress
+            score(format: POINT_10)
+            media { id }
+          }
+        }
+      }
+    }
+  `;
+  const data = await anilistFetch<{
+    MediaListCollection: {
+      lists: { entries: { status: string; progress: number; score: number; media: { id: number } }[] }[];
+    } | null;
+  }>(query, { username });
+
+  if (!data.MediaListCollection) return [];
+  return data.MediaListCollection.lists.flatMap((list) =>
+    list.entries.map((e) => ({
+      anilistId: e.media.id,
+      status: e.status,
+      score: e.score,
+      progress: e.progress,
+    })),
+  );
+}
+
 export async function browseAnime(filters: BrowseFilters) {
   const {
     search, genres, yearFrom, yearTo, formats, statuses, minScore,

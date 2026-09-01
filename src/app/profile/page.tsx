@@ -32,7 +32,11 @@ export default async function ProfilePage() {
         <h1 className="font-display text-3xl text-paper">Nothing tracked yet.</h1>
         <p className="text-sm text-ash">
           Search for something you&apos;re watching, or browse what&apos;s trending, and add
-          it to your list.
+          it to your list. Already tracking one elsewhere?{" "}
+          <Link href="/import" className="text-paper underline underline-offset-2 hover:text-hanko">
+            Import it
+          </Link>
+          .
         </p>
         <Link
           href="/browse"

@@ -36,7 +36,16 @@ Features scoped for later, not yet built. Ordered roughly by dependency, not pri
 - Data source: AniList's `nextAiringEpisode` field on `Media` (not yet in our types/queries)
 - Natural pairing with a notification later (flagged as a bigger bet, not in this batch)
 
----
+## UI/UX polish batch
+Flagged 2026-09-01, not yet scoped in detail:
+- List entry editor: selecting "Completed" should auto-max progress to the anime's episode count
+- List entry editor: add a way to type an exact episode count directly, not just increment/decrement
+- Landing page trending rail: add manual back/forward dots (like a carousel), and move/center the "Trending" label below the rail's title instead of its current position
+- Anime detail page: the format/episode-count/status/year/score line (e.g. "TV · 12 episodes · Airing · 2026 · 8/10") should use the same middle-dot separators as the genre line ("Drama · Romance"), not whatever separator is there now
+- Auth: real email/password registration + login (today's Credentials provider is dev-seed-only, gated out of production — see `src/lib/auth.ts`)
+- Auth/Profile: let a user choose a username (also a prerequisite noted under Public profile pages above, for a `/u/[username]` URL)
+- Nav: bigger click targets on Browse/Seasonal/Profile links
+- Nav: move Profile to the right side of the nav bar
 
 Also flagged during the original roadmap discussion, not selected for this batch but worth remembering:
 - Notes field on list entries (schema already supports it, `AnimeListEntry.notes`, just needs UI)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AnimeCard } from "@/components/anime-card";
 import {
   ACCENT_PALETTE,
@@ -110,13 +111,21 @@ export function ProfileView({
             </h1>
             {displayBio && !editing && <p className="max-w-md text-sm text-ash">{displayBio}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => setEditing((e) => !e)}
-            className="flex-shrink-0 border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
-          >
-            {editing ? "Close" : "Customize"}
-          </button>
+          <div className="flex flex-shrink-0 gap-2">
+            <Link
+              href="/import"
+              className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
+            >
+              Import
+            </Link>
+            <button
+              type="button"
+              onClick={() => setEditing((e) => !e)}
+              className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
+            >
+              {editing ? "Close" : "Customize"}
+            </button>
+          </div>
         </div>
 
         {editing && (
