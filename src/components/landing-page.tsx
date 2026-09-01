@@ -26,7 +26,7 @@ export async function LandingPage() {
 
   return (
     <main className="flex flex-col">
-      <section className="mx-auto grid w-full max-w-[1400px] grid-cols-1 px-8 lg:grid-cols-[1fr_320px] lg:items-center lg:gap-16 2xl:px-16">
+      <section className="mx-auto grid w-full max-w-[1400px] grid-cols-1 px-8 lg:grid-cols-[1fr_420px] lg:items-center lg:gap-16 2xl:px-16">
         <div className="flex flex-col justify-center gap-6 py-20 lg:py-32">
           <h1 className="max-w-lg font-display text-5xl leading-[1.05] text-paper lg:text-6xl">
             A record of everything you&apos;ve watched.
