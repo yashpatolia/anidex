@@ -8,6 +8,7 @@
 // client" component (import the plain types from "@/lib/anilist" instead).
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { getAnimeById as fetchAnimeById, getAnimeByIds as fetchAnimeByIds } from "@/lib/anilist";
 import type { AnilistMediaDetail } from "@/lib/anilist";
 
@@ -25,15 +26,31 @@ async function readCached(ids: number[]): Promise<Map<number, { data: AnilistMed
 
 async function writeCached(entries: AnilistMediaDetail[]): Promise<void> {
   if (entries.length === 0) return;
-  await Promise.all(
-    entries.map((entry) =>
-      prisma.animeCache.upsert({
-        where: { anilistId: entry.id },
-        create: { anilistId: entry.id, data: entry as never },
-        update: { data: entry as never },
-      }),
-    ),
+
+  // One bulk upsert instead of N individual round trips — matters for a
+  // big list (a 1000-anime Profile's first cold-cache load previously
+  // fired 1000 concurrent upserts). Also fixes a real bug the old
+  // upsert() form had: its `update` clause never touched `fetchedAt`, so
+  // once a row crossed the 6h TTL once, isFresh() would stay false for it
+  // forever — every later read would refetch from AniList indefinitely,
+  // even though we'd just written fresh data. This explicitly bumps
+  // fetchedAt on every write, refresh included.
+  //
+  // Uses the app's own clock (`now`, passed in) rather than the DB's SQL
+  // now() — verified locally that Postgres's now() can drift hours off
+  // from Node's Date.now() (container clock/timezone config), which would
+  // silently shrink the effective TTL. isFresh() below compares against
+  // Date.now(), so the write timestamp needs to come from that same clock.
+  const now = new Date();
+  const rows = entries.map(
+    (entry) => Prisma.sql`(${entry.id}, ${JSON.stringify(entry)}::jsonb, ${now}, ${now})`,
   );
+  await prisma.$executeRaw`
+    INSERT INTO "AnimeCache" ("anilistId", "data", "fetchedAt", "updatedAt")
+    VALUES ${Prisma.join(rows)}
+    ON CONFLICT ("anilistId") DO UPDATE
+      SET "data" = EXCLUDED."data", "fetchedAt" = ${now}, "updatedAt" = ${now}
+  `;
 }
 
 // Wrapped in React's cache() so a page and its generateMetadata calling
