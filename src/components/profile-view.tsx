@@ -54,9 +54,13 @@ const SORT_MODES: { value: SortMode; label: string; icon: ReactNode }[] = [
     value: "scoreAsc",
     label: "Rating, low to high",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <line x1="10" y1="16.5" x2="10" y2="3.5" strokeLinecap="round" />
-        <path d="M4.5 9 L10 3.5 L15.5 9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <path
+          d="M5.5 3 L6.6 5.5 L9.3 5.9 L7.4 7.8 L7.9 10.5 L5.5 9.2 L3.1 10.5 L3.6 7.8 L1.7 5.9 L4.4 5.5 Z"
+          strokeLinejoin="round"
+        />
+        <line x1="14.5" y1="16" x2="14.5" y2="5.5" strokeLinecap="round" />
+        <path d="M11.5 8.5 L14.5 5 L17.5 8.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     ),
   },
@@ -64,9 +68,13 @@ const SORT_MODES: { value: SortMode; label: string; icon: ReactNode }[] = [
     value: "scoreDesc",
     label: "Rating, high to low",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <line x1="10" y1="3.5" x2="10" y2="16.5" strokeLinecap="round" />
-        <path d="M4.5 11 L10 16.5 L15.5 11" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <path
+          d="M5.5 3 L6.6 5.5 L9.3 5.9 L7.4 7.8 L7.9 10.5 L5.5 9.2 L3.1 10.5 L3.6 7.8 L1.7 5.9 L4.4 5.5 Z"
+          strokeLinejoin="round"
+        />
+        <line x1="14.5" y1="4" x2="14.5" y2="14.5" strokeLinecap="round" />
+        <path d="M11.5 11.5 L14.5 15 L17.5 11.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     ),
   },
