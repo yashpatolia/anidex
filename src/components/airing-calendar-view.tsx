@@ -1,17 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { QuickAddButton } from "@/components/quick-add-button";
 import type { AnilistMedia } from "@/lib/anilist";
 
-// Fixed window size per day column. Without this, a busy day (30+ shows)
-// makes its column run far past every quieter day's, breaking the grid's
-// alignment. Large enough that most columns fill out the page on their own
-// (this isn't meant to feel like a cramped preview) — paging only kicks in
-// once a day's actually got more than this many shows airing.
-const PAGE_SIZE = 18;
+// Row height is fixed by the h-14 cover (56px) — that dominates the row's
+// height regardless of title/subtitle text, which never wraps to more than
+// its own ~36px. py-2.5 (20px) + a 1px border round it out.
+const ROW_HEIGHT_PX = 56 + 20 + 1;
+// Deliberate breathing room below the last row so it doesn't sit flush
+// against the very bottom edge of the viewport.
+const BOTTOM_GAP_PX = 32;
+const MIN_PAGE_SIZE = 3;
+// Used for the very first render (server-rendered, then hydrated) before
+// the effect below can measure real layout — picked to be a reasonable
+// guess rather than causing a jarring jump once the real value lands.
+const DEFAULT_PAGE_SIZE = 10;
 
 export type AiringItem = {
   anime: AnilistMedia;
@@ -46,6 +52,25 @@ const WEEKDAYS = [
 
 export function AiringCalendarView({ items }: { items: AiringItem[] }) {
   const [pageByDay, setPageByDay] = useState<Record<number, number>>({});
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // How many rows actually fit without the page itself needing to scroll —
+  // measured from where the row list starts (below the sticky nav, the page
+  // header, and this column's own weekday header) down to the bottom of the
+  // viewport, minus a bit of bottom breathing room. Recomputed on resize;
+  // the effect (not a layout-time calculation) means the very first paint
+  // uses DEFAULT_PAGE_SIZE and corrects itself right after mount.
+  useEffect(() => {
+    function recompute() {
+      const top = listRef.current?.getBoundingClientRect().top ?? 0;
+      const available = window.innerHeight - top - BOTTOM_GAP_PX;
+      setPageSize(Math.max(MIN_PAGE_SIZE, Math.floor(available / ROW_HEIGHT_PX)));
+    }
+    recompute();
+    window.addEventListener("resize", recompute);
+    return () => window.removeEventListener("resize", recompute);
+  }, []);
 
   const columns = useMemo(() => {
     const todayIndex = new Date().getDay();
@@ -78,15 +103,15 @@ export function AiringCalendarView({ items }: { items: AiringItem[] }) {
   return (
     <div className="overflow-x-auto">
       <div className="grid min-w-[1120px] grid-cols-7 gap-4">
-        {columns.map((day) => {
+        {columns.map((day, columnIndex) => {
           const maxPage = Math.max(
             0,
-            Math.ceil(day.items.length / PAGE_SIZE) - 1,
+            Math.ceil(day.items.length / pageSize) - 1,
           );
           const page = Math.min(pageByDay[day.dayIndex] ?? 0, maxPage);
           const visible = day.items.slice(
-            page * PAGE_SIZE,
-            page * PAGE_SIZE + PAGE_SIZE,
+            page * pageSize,
+            page * pageSize + pageSize,
           );
 
           return (
@@ -129,7 +154,7 @@ export function AiringCalendarView({ items }: { items: AiringItem[] }) {
                 )}
               </div>
 
-              <div className="flex flex-col">
+              <div className="flex flex-col" ref={columnIndex === 0 ? listRef : undefined}>
                 {visible.length === 0 ? (
                   <p className="py-3 text-xs text-ash">Nothing airing.</p>
                 ) : (
