@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  // Self-hosted behind nginx: Auth.js only trusts the incoming Host header
+  // when this is set (Vercel gets it for free; we don't).
+  trustHost: true,
   // Credentials provider requires JWT sessions (DB sessions only work for
   // OAuth providers under the adapter). This still works fine alongside Google.
   session: { strategy: "jwt" },
