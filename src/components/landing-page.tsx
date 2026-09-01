@@ -1,22 +1,20 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { getTrendingAnime, getPopularAnime, getTopRatedAnime } from "@/lib/anilist";
+import { getLandingRails } from "@/lib/anilist";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { AnimeRail } from "@/components/anime-rail";
 import { HeroGallery } from "@/components/hero-gallery";
 
 export async function LandingPage() {
-  const [session, trending, popular, topRated] = await Promise.all([
+  const [session, { trending, popular, topRated }] = await Promise.all([
     auth(),
-    getTrendingAnime(1, 24),
-    getPopularAnime(1, 24),
-    getTopRatedAnime(1, 24),
+    getLandingRails(24),
   ]);
   const trackedIds = session?.user
     ? [...(await getTrackedAnilistIds(session.user.id))]
     : [];
 
-  const galleryItems = trending.media
+  const galleryItems = trending
     .slice(0, 5)
     .map((anime) => {
       const src = anime.coverImage.extraLarge ?? anime.coverImage.large;
@@ -59,9 +57,9 @@ export async function LandingPage() {
         </div>
       </section>
 
-      <AnimeRail title="Trending now" media={trending.media} trackedIds={trackedIds} />
-      <AnimeRail title="All-time favorites" media={popular.media} trackedIds={trackedIds} />
-      <AnimeRail title="Top rated" media={topRated.media} trackedIds={trackedIds} />
+      <AnimeRail title="Trending now" media={trending} trackedIds={trackedIds} />
+      <AnimeRail title="All-time favorites" media={popular} trackedIds={trackedIds} />
+      <AnimeRail title="Top rated" media={topRated} trackedIds={trackedIds} />
     </main>
   );
 }

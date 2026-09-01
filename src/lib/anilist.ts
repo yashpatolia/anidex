@@ -308,6 +308,38 @@ export function getTopRatedAnime(page = 1, perPage = 20) {
   return getMediaBySort("SCORE_DESC", page, perPage);
 }
 
+// The landing page's three rails used to be three separate AniList
+// requests fired in parallel. GraphQL lets multiple root fields share one
+// request via aliases, so this collapses them into one HTTP call — on
+// AniList's current degraded 30 req/min limit, that's the difference
+// between one page load costing 3 requests or 1.
+export async function getLandingRails(perPage = 24) {
+  const query = `
+    query ($perPage: Int) {
+      trending: Page(page: 1, perPage: $perPage) {
+        media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${MEDIA_FIELDS} }
+      }
+      popular: Page(page: 1, perPage: $perPage) {
+        media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) { ${MEDIA_FIELDS} }
+      }
+      topRated: Page(page: 1, perPage: $perPage) {
+        media(type: ANIME, sort: SCORE_DESC, isAdult: false) { ${MEDIA_FIELDS} }
+      }
+    }
+  `;
+  const data = await anilistFetch<{
+    trending: { media: AnilistMedia[] };
+    popular: { media: AnilistMedia[] };
+    topRated: { media: AnilistMedia[] };
+  }>(query, { perPage });
+
+  return {
+    trending: data.trending.media,
+    popular: data.popular.media,
+    topRated: data.topRated.media,
+  };
+}
+
 export type BrowseFilters = {
   search?: string;
   genres?: string[];
