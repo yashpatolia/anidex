@@ -58,6 +58,9 @@ export function QuickAddButton({
         body: JSON.stringify({ anilistId, status }),
       });
       setTracked(true);
+      // Invalidates Next's client-side Router Cache so Profile shows this
+      // change immediately on the next navigation there, not a stale copy.
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -71,6 +74,7 @@ export function QuickAddButton({
     setTracked(false); // optimistic
     try {
       await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+      router.refresh();
     } finally {
       setBusy(false);
     }

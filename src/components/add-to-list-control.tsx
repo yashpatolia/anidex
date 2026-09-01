@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 // Mirrors the Prisma WatchStatus enum values as plain strings. Deliberately
 // not importing the generated Prisma client here: it's a server-only module
@@ -31,7 +32,12 @@ export function AddToListControl({
 }) {
   const [entry, setEntry] = useState<Entry | null>(initialEntry);
   const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
+  // Next's client-side Router Cache would otherwise keep showing whatever
+  // Profile/detail data was already fetched this session — router.refresh()
+  // invalidates it so navigating back after an edit shows the real values,
+  // not a stale snapshot from before the edit.
   async function save(next: Entry) {
     setEntry(next);
     setSaving(true);
@@ -41,6 +47,7 @@ export function AddToListControl({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ anilistId, ...next }),
       });
+      router.refresh();
     } finally {
       setSaving(false);
     }
@@ -49,6 +56,7 @@ export function AddToListControl({
   async function remove() {
     setEntry(null);
     await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+    router.refresh();
   }
 
   if (!entry) {

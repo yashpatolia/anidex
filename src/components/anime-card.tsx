@@ -6,9 +6,18 @@ import { QuickAddButton } from "@/components/quick-add-button";
 export function AnimeCard({
   anime,
   initialTracked = false,
+  score,
+  dense = false,
 }: {
   anime: AnilistMedia;
   initialTracked?: boolean;
+  // The viewer's own score for this entry (1-10), not AniList's average —
+  // shown as a stamped badge over the cover when present (Profile only;
+  // Browse/Seasonal/Landing never pass this).
+  score?: number | null;
+  // Compact grid mode: drops the genre line so more cards fit per row
+  // without the text crowding the smaller covers.
+  dense?: boolean;
 }) {
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
 
@@ -29,6 +38,12 @@ export function AnimeCard({
         )}
 
         <QuickAddButton anilistId={anime.id} initialTracked={initialTracked} />
+
+        {score != null && (
+          <span className="absolute right-2 top-2 flex h-7 items-center border-2 border-hanko bg-ink/90 px-2 font-mono text-xs font-semibold text-hanko">
+            {score}/10
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex flex-col gap-1 border-t border-line pt-2">
@@ -36,7 +51,7 @@ export function AnimeCard({
           {title}
         </h3>
 
-        {anime.genres.length > 0 && (
+        {!dense && anime.genres.length > 0 && (
           <p className="font-mono text-[11px] uppercase tracking-wide text-ash">
             {anime.genres.slice(0, 3).join(" · ")}
           </p>
