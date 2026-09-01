@@ -1,10 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { isValidUsername } from "@/lib/username";
+
+// Minimal external store so useSyncExternalStore can pick up our own
+// same-tab localStorage writes — the native "storage" event only fires in
+// *other* tabs, never the one that made the change.
+const nudgeListeners = new Set<() => void>();
+function subscribeToNudgeDismissal(listener: () => void) {
+  nudgeListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    nudgeListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+function notifyNudgeDismissed() {
+  for (const listener of nudgeListeners) listener();
+}
 
 function fieldClass() {
   return "border border-line bg-ink px-3 py-2 text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none";
@@ -42,7 +58,41 @@ export function AccountView({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  // Dismissing the auto-assigned-username nudge only ever lived in
+  // component state, so it reset on every page load — persist it in
+  // localStorage instead so "Dismiss" actually sticks. Keyed by email since
+  // that's already a stable, available identifier for this account.
+  //
+  // useSyncExternalStore (not useState+useEffect) because this reads an
+  // external, non-React value that differs between server and client:
+  // there's no localStorage during SSR, so the server snapshot is "hidden"
+  // by default, and the client snapshot corrects it right after hydration
+  // with no risk of a genuinely-dismissed nudge flashing back into view.
+  const nudgeStorageKey = email ? `anidex:username-nudge-dismissed:${email}` : null;
+  const nudgeDismissed = useSyncExternalStore(
+    subscribeToNudgeDismissal,
+    () => {
+      if (!nudgeStorageKey) return false;
+      try {
+        return localStorage.getItem(nudgeStorageKey) === "1";
+      } catch {
+        return false;
+      }
+    },
+    () => true,
+  );
+  function dismissNudge() {
+    if (nudgeStorageKey) {
+      try {
+        localStorage.setItem(nudgeStorageKey, "1");
+      } catch {
+        // Private browsing / storage disabled — dismissal just won't
+        // persist across reloads, not worth surfacing an error for.
+      }
+    }
+    notifyNudgeDismissed();
+  }
 
   // Change password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -156,7 +206,7 @@ export function AccountView({
             </p>
             <button
               type="button"
-              onClick={() => setNudgeDismissed(true)}
+              onClick={dismissNudge}
               className="flex-shrink-0 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
             >
               Dismiss
