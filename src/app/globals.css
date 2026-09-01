@@ -24,6 +24,14 @@ body {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Tailwind's preflight resets <button> to cursor: default (matching native
+   browser behavior) instead of the pointer every other clickable element
+   in the app gets. Every button here is clickable, so undo that globally
+   rather than adding cursor-pointer to each one individually. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 .font-display {
   font-weight: 700;
 }

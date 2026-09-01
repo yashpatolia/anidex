@@ -54,8 +54,19 @@ export async function Nav() {
               >
                 <button
                   type="submit"
-                  className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
+                  className="flex items-center gap-1.5 px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
                 >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M8 3.5H4.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1H8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M12.5 6.5 16 10l-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="16" y1="10" x2="7.3" y2="10" strokeLinecap="round" />
+                  </svg>
                   Sign out
                 </button>
               </form>
