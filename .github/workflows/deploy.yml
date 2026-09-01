@@ -54,6 +54,11 @@ jobs:
           # change. GHA cache persists layers between workflow runs.
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # build-push-action v6 generates a build provenance attestation by
+          # default (an extra "resolving provenance" step + manifest on
+          # every build). Useful for supply-chain verification, not
+          # something this single-VPS personal deploy needs.
+          provenance: false
 
   deploy:
     needs: build-and-push
@@ -69,8 +74,12 @@ jobs:
             set -e
             cd ${{ secrets.VPS_APP_DIR }}
             echo "IMAGE=${{ needs.build-and-push.outputs.image }}" > .env.image
-            export $(cat .env.image .env | xargs)
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose --env-file .env --env-file .env.image pull app
             docker compose --env-file .env --env-file .env.image up -d
-            docker image prune -f
+            # -a (not just prune's default dangling-only cleanup): every
+            # deploy tags its image with the unique commit SHA, so the
+            # *previous* deploy's image is still fully tagged, not dangling
+            # — plain `docker image prune -f` would never touch it and old
+            # images (500+MB each) would accumulate on disk forever.
+            docker image prune -a -f
