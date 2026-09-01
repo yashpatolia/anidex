@@ -23,6 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # cache-to/cache-from: type=gha (below) needs Buildx's docker-container
+      # driver — the default docker driver can't export to that cache backend.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -43,6 +48,12 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # Without this, every push rebuilds from a cold cache — npm ci runs
+          # twice from scratch (deps + prod-deps stages) and the Next.js
+          # build gets no layer reuse, even when package-lock.json didn't
+          # change. GHA cache persists layers between workflow runs.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build-and-push
