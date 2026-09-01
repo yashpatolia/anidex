@@ -46,11 +46,25 @@ npx prisma db seed        # re-run prisma/seed.ts
 
 ## Deployment (VPS via GitHub Actions)
 
-On push to `main`, `.github/workflows/deploy.yml`:
+On push to `master`, `.github/workflows/deploy.yml`:
 
 1. Builds the `Dockerfile` and pushes it to GHCR (`ghcr.io/<owner>/anime-list`).
 2. SSHes into the VPS and runs `docker compose pull && up -d`, which also runs
    `prisma migrate deploy` automatically on container start (see `docker-entrypoint.sh`).
+
+### One-time: seed the local anime title search index
+
+Browse's search and the nav search dropdown use a local mirror of AniList's title
+catalog for real substring matching (AniList's own search API returns nothing for
+short fragments). After the first deploy, run this once against the production
+database to populate it:
+
+```bash
+DATABASE_URL=<production DATABASE_URL> npx tsx scripts/sync-anime-titles.ts
+```
+
+Takes a few minutes (rate-limit-paced, ~5,000 titles). Safe to re-run any time to
+refresh popularity/titles — it upserts, not replaces.
 
 ### One-time VPS setup
 
