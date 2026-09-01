@@ -61,13 +61,15 @@ export function AddToListControl({
     router.refresh();
   }
 
-  // Marking something Completed almost always means "I watched all of it" —
-  // jump progress to the full episode count rather than leaving it wherever
-  // it happened to be, so the two rarely-desired states of "Completed" with
-  // partial progress don't need a separate manual bump every time.
+  // Completed almost always means "I watched all of it", and Plan to watch
+  // means "I haven't started" — jump progress to match rather than leaving
+  // it wherever it happened to be, so neither needs a separate manual fix
+  // every time.
   function chooseStatus(status: WatchStatus) {
     if (!entry) return;
-    const progress = status === "COMPLETED" && episodes ? episodes : entry.progress;
+    let progress = entry.progress;
+    if (status === "COMPLETED" && episodes) progress = episodes;
+    else if (status === "PLANNED") progress = 0;
     save({ ...entry, status, progress });
   }
 
