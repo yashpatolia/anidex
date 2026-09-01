@@ -12,6 +12,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
 RUN npm run build
+# .next/cache (build-time incremental-compile cache) and .next/dev are
+# useless at runtime — next start's own required-server-files.json never
+# references either — but were being copied into the runner image and
+# pushed/pulled on every single deploy anyway. Measured on a real build:
+# 221MB total .next output, only ~22MB (server + static + manifests)
+# actually needed; the other ~200MB was pure network cost on every deploy.
+RUN rm -rf .next/cache .next/dev
 
 # --- prod-deps: production-only node_modules for the runtime image ---
 FROM node:22-slim AS prod-deps
