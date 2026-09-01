@@ -9,6 +9,10 @@ export type ProfilePrefs = {
   accentColor: string;
   sections: { key: SectionKey; visible: boolean }[];
   stats: { total: boolean; episodes: boolean; avgScore: boolean; genres: boolean };
+  // Whether /u/[username] is visible to anyone, or only the owner. Defaults
+  // to false — a list shouldn't become publicly visible just because
+  // usernames exist; the owner has to opt in from Profile's Customize panel.
+  isPublic: boolean;
 };
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
@@ -29,6 +33,7 @@ export const DEFAULT_PREFS: ProfilePrefs = {
     { key: "DROPPED", visible: true },
   ],
   stats: { total: true, episodes: true, avgScore: true, genres: true },
+  isPublic: false,
 };
 
 export const ACCENT_PALETTE = [
@@ -58,5 +63,6 @@ export function normalizePrefs(raw: unknown): ProfilePrefs {
     accentColor: r.accentColor ?? DEFAULT_PREFS.accentColor,
     sections: sections.length ? sections : DEFAULT_PREFS.sections,
     stats: { ...DEFAULT_PREFS.stats, ...r.stats },
+    isPublic: r.isPublic ?? DEFAULT_PREFS.isPublic,
   };
 }

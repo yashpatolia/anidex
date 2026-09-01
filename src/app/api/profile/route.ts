@@ -19,6 +19,7 @@ const prefsSchema = z.object({
     avgScore: z.boolean(),
     genres: z.boolean(),
   }),
+  isPublic: z.boolean(),
 });
 
 const bodySchema = z.object({
