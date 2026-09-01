@@ -47,7 +47,7 @@ export default async function SeasonalPage({
 async function SeasonalResults({ season, year, page }: { season: string; year: number; page: number }) {
   const [session, { media, pageInfo }] = await Promise.all([
     auth(),
-    getSeasonalAnime(season, year, page, 30),
+    getSeasonalAnime(season, year, page, 50),
   ]);
   const trackedIds = session?.user ? await getTrackedAnilistIds(session.user.id) : new Set<number>();
 

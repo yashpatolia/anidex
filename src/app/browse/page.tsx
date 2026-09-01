@@ -56,7 +56,7 @@ async function BrowseResults({ params, page }: { params: Params; page: number })
       minScore: params.minScore ? Number(params.minScore) : undefined,
       sort: params.sort || undefined,
       page,
-      perPage: 30,
+      perPage: 50,
     }),
   ]);
   const trackedIds = session?.user ? await getTrackedAnilistIds(session.user.id) : new Set<number>();

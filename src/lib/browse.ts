@@ -21,7 +21,7 @@ const SORTERS: Record<string, Sorter> = {
 export async function browseWithSearch(filters: BrowseFilters) {
   const {
     search, genres, yearFrom, yearTo, formats, statuses, minScore,
-    sort = "POPULARITY_DESC", page = 1, perPage = 30,
+    sort = "POPULARITY_DESC", page = 1, perPage = 50,
   } = filters;
 
   if (!search) return browseAnime(filters);

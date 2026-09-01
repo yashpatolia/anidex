@@ -281,7 +281,7 @@ export function getCurrentSeason(): { season: string; year: number } {
   return { season: "FALL", year };
 }
 
-export async function getSeasonalAnime(season: string, year: number, page = 1, perPage = 30) {
+export async function getSeasonalAnime(season: string, year: number, page = 1, perPage = 50) {
   const query = `
     query ($page: Int, $perPage: Int, $season: MediaSeason, $year: Int) {
       Page(page: $page, perPage: $perPage) {
@@ -486,7 +486,7 @@ export async function getAnilistUserList(username: string): Promise<AnilistListE
 export async function browseAnime(filters: BrowseFilters) {
   const {
     search, genres, yearFrom, yearTo, formats, statuses, minScore,
-    sort = "POPULARITY_DESC", page = 1, perPage = 30,
+    sort = "POPULARITY_DESC", page = 1, perPage = 50,
   } = filters;
 
   // AniList's date filters are FuzzyDateInt scalars in YYYYMMDD form. To make
