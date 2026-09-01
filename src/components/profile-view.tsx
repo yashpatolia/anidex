@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimeCard } from "@/components/anime-card";
 import { AnimeListRow } from "@/components/anime-list-row";
+import { ExportMenu } from "@/components/export-menu";
 import { SortSelect } from "@/components/sort-select";
 import {
   ACCENT_PALETTE,
@@ -280,6 +281,7 @@ export function ProfileView({
             >
               Import
             </Link>
+            <ExportMenu />
             <button
               type="button"
               onClick={() => setEditing((e) => !e)}
