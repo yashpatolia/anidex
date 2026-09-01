@@ -52,7 +52,7 @@ const SORT_MODES: { value: SortMode; label: string; icon: ReactNode }[] = [
   },
   {
     value: "scoreAsc",
-    label: "Rating, low to high",
+    label: "Rating, low-high",
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3">
         <path
@@ -66,7 +66,7 @@ const SORT_MODES: { value: SortMode; label: string; icon: ReactNode }[] = [
   },
   {
     value: "scoreDesc",
-    label: "Rating, high to low",
+    label: "Rating, high-low",
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3">
         <path
