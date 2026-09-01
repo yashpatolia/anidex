@@ -7,6 +7,7 @@ RUN npm ci
 # --- builder: generate Prisma client + build Next.js ---
 FROM node:22-slim AS builder
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
@@ -22,6 +23,7 @@ RUN npm ci --omit=dev
 FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 COPY --from=prod-deps /app/node_modules ./node_modules
