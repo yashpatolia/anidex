@@ -16,18 +16,19 @@ export async function Nav() {
             AniDex
           </Link>
 
-          <nav className="hidden items-center gap-5 font-mono text-xs uppercase tracking-widest text-ash sm:flex">
-            <Link href="/browse" className="transition-colors hover:text-paper">
+          <nav className="hidden items-center sm:flex">
+            <Link
+              href="/browse"
+              className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
+            >
               Browse
             </Link>
-            <Link href="/seasonal" className="transition-colors hover:text-paper">
+            <Link
+              href="/seasonal"
+              className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
+            >
               Seasonal
             </Link>
-            {session?.user && (
-              <Link href="/profile" className="transition-colors hover:text-paper">
-                Profile
-              </Link>
-            )}
           </nav>
         </div>
 
@@ -35,21 +36,30 @@ export async function Nav() {
           <NavSearch />
         </div>
 
-        <div className="flex items-center justify-end gap-5">
+        <div className="flex items-center justify-end">
           {session?.user ? (
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
-            >
-              <button
-                type="submit"
-                className="font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
+            <>
+              <Link
+                href="/profile"
+                className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
               >
-                Sign out
-              </button>
-            </form>
+                Profile
+              </Link>
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
+                className="flex"
+              >
+                <button
+                  type="submit"
+                  className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper"
+                >
+                  Sign out
+                </button>
+              </form>
+            </>
           ) : (
             <Link
               href="/login"
