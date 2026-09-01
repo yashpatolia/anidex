@@ -8,6 +8,7 @@ export function AnimeCard({
   initialTracked = false,
   score,
   dense = false,
+  isAdult = false,
 }: {
   anime: AnilistMedia;
   initialTracked?: boolean;
@@ -18,6 +19,11 @@ export function AnimeCard({
   // Compact grid mode: drops the genre line so more cards fit per row
   // without the text crowding the smaller covers.
   dense?: boolean;
+  // Browse/Seasonal/Landing already filter isAdult: false at the query
+  // level, so this never applies there. Airing doesn't filter it out (a
+  // popularity-ranked "what's airing" list shouldn't silently drop
+  // entries) — it tags them instead.
+  isAdult?: boolean;
 }) {
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
 
@@ -42,6 +48,12 @@ export function AnimeCard({
         {score != null && (
           <span className="absolute right-2 top-2 flex h-7 items-center border-2 border-hanko bg-ink/90 px-2 font-mono text-xs font-semibold text-hanko">
             {score}/10
+          </span>
+        )}
+
+        {isAdult && (
+          <span className="absolute bottom-2 right-2 flex h-5 items-center bg-ink/90 px-1.5 font-mono text-[10px] font-semibold text-ash">
+            18+
           </span>
         )}
       </div>
