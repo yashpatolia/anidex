@@ -44,8 +44,8 @@ Flagged 2026-09-01, not yet scoped in detail:
 - Anime detail page: the format/episode-count/status/year/score line (e.g. "TV · 12 episodes · Airing · 2026 · 8/10") should use the same middle-dot separators as the genre line ("Drama · Romance"), not whatever separator is there now
 - Auth: real email/password registration + login (today's Credentials provider is dev-seed-only, gated out of production — see `src/lib/auth.ts`)
 - Auth/Profile: let a user choose a username (also a prerequisite noted under Public profile pages above, for a `/u/[username]` URL)
-- Nav: bigger click targets on Browse/Seasonal/Profile links
-- Nav: move Profile to the right side of the nav bar
+- ~~Nav: bigger click targets on Browse/Seasonal/Profile links~~ — done
+- ~~Nav: move Profile to the right side of the nav bar~~ — done
 
 Also flagged during the original roadmap discussion, not selected for this batch but worth remembering:
 - Notes field on list entries (schema already supports it, `AnimeListEntry.notes`, just needs UI)
