@@ -122,14 +122,14 @@ export function ProfileView({
       style={{ ["--color-hanko" as string]: prefs.accentColor }}
     >
       <header className="flex flex-col gap-6 border-b border-line pb-8">
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-3xl text-paper">
               {displayUsername ? `${displayUsername}'s list` : "Your list"}
             </h1>
             {displayBio && !editing && <p className="max-w-md text-sm text-ash">{displayBio}</p>}
           </div>
-          <div className="flex flex-shrink-0 gap-2">
+          <div className="flex flex-wrap gap-2 sm:flex-shrink-0 sm:flex-nowrap">
             <Link
               href="/import"
               className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
