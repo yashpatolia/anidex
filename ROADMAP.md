@@ -20,8 +20,7 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
 - Natural pairing with a notification later (flagged as a bigger bet, not in this batch)
 
 ## UI/UX polish batch
-Flagged 2026-09-01, not yet scoped in detail (nothing currently open here — see Public profile
-pages above for the next batch of work):
+Flagged 2026-09-01, not yet scoped in detail — nothing currently open here.
 
 Also flagged during the original roadmap discussion, not selected for this batch but worth remembering:
 - Notes field on list entries (schema already supports it, `AnimeListEntry.notes`, just needs UI)
