@@ -33,24 +33,31 @@ ENV NODE_ENV=production
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma7.config.ts ./prisma7.config.ts
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --chown=nextjs:nodejs --from=prod-deps /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs --from=builder /app/.next ./.next
+COPY --chown=nextjs:nodejs --from=builder /app/public ./public
+COPY --chown=nextjs:nodejs --from=builder /app/src/generated ./src/generated
+COPY --chown=nextjs:nodejs --from=builder /app/prisma ./prisma
+COPY --chown=nextjs:nodejs --from=builder /app/prisma7.config.ts ./prisma7.config.ts
+COPY --chown=nextjs:nodejs --from=builder /app/package.json ./package.json
+COPY --chown=nextjs:nodejs --from=builder /app/next.config.ts ./next.config.ts
 
 # prisma CLI + tsx aren't in prod deps (they're devDependencies); the
 # entrypoint needs them to run `prisma migrate deploy` before starting.
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=deps /app/node_modules/@prisma/config ./node_modules/@prisma/config
-COPY --from=deps /app/node_modules/dotenv ./node_modules/dotenv
+COPY --chown=nextjs:nodejs --from=deps /app/node_modules/prisma ./node_modules/prisma
+COPY --chown=nextjs:nodejs --from=deps /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --chown=nextjs:nodejs --from=deps /app/node_modules/@prisma/config ./node_modules/@prisma/config
+COPY --chown=nextjs:nodejs --from=deps /app/node_modules/dotenv ./node_modules/dotenv
 
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
+# --chown on every COPY above (not a trailing `chown -R /app`) is
+# deliberate: chown-ing an already-copied directory forces overlayfs to
+# duplicate every file into a new layer just to change ownership metadata,
+# even though the content never changed. Measured: that one `chown -R`
+# line was a 228MB layer on its own — nearly the size of node_modules
+# itself, copied twice for no reason. Setting ownership at copy time
+# avoids the duplication entirely.
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000
