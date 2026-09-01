@@ -166,17 +166,33 @@ export async function getAnimeById(id: number): Promise<AnilistMediaDetail | nul
 // that's reusable by the anime detail page too, not just list/card views.
 export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
   if (ids.length === 0) return [];
+
+  // AniList clamps any id_in lookup to 50 results per page regardless of
+  // the requested perPage — silently, no error — so anything past the
+  // first 50 ids in a single request would just vanish from the response.
+  // Chunk and fetch in parallel instead.
+  const CHUNK = 50;
+  const chunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+
   const query = `
-    query ($ids: [Int]) {
-      Page(perPage: ${ids.length}) {
+    query ($ids: [Int], $perPage: Int) {
+      Page(perPage: $perPage) {
         media(id_in: $ids, type: ANIME) {
           ${MEDIA_DETAIL_FIELDS}
         }
       }
     }
   `;
-  const data = await anilistFetch<{ Page: { media: AnilistMediaDetail[] } }>(query, { ids });
-  return data.Page.media;
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      anilistFetch<{ Page: { media: AnilistMediaDetail[] } }>(query, {
+        ids: chunk,
+        perPage: chunk.length,
+      }),
+    ),
+  );
+  return results.flatMap((r) => r.Page.media);
 }
 
 export const SEASONS = [
