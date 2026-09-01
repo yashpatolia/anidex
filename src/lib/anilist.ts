@@ -1,6 +1,11 @@
 // Thin client for the public AniList GraphQL API (https://docs.anilist.co/).
-// No API key needed for reads. Responses are cached by Next's fetch layer
-// (`next.revalidate`) to stay well under AniList's rate limit.
+// No API key needed for reads. Responses are cached server-side via
+// unstable_cache (see anilistFetch below) to stay well under AniList's rate
+// limit — deliberately not relying on Next's automatic fetch Data Cache,
+// which reliably auto-caches GET requests but not POST, and AniList's API
+// requires POST.
+
+import { unstable_cache } from "next/cache";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 
@@ -102,17 +107,40 @@ class AnilistError extends Error {
   }
 }
 
-async function anilistFetch<T>(
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// AniList's shared anonymous rate limit is easy to trip under real traffic
+// (every uncached anime lookup, and there are several per page load, counts
+// against it) — without a retry here, a transient 429 propagated straight
+// up as an uncaught error and took down the whole page via the error
+// boundary. Retry a couple of times with backoff (respecting Retry-After
+// when AniList sends one) before actually giving up; callers like
+// anime-cache.ts already know how to fall back to stale cached data if this
+// still throws after that.
+//
+// Deliberately untyped (returns unknown) — this is wrapped in unstable_cache
+// below, and keeping it non-generic avoids fixing a single type parameter
+// into that cached function for every call site. anilistFetch (the public,
+// generic wrapper) does the cast back to T.
+async function anilistFetchWithRetry(
   query: string,
   variables: Record<string, unknown>,
-): Promise<T> {
+  attempt = 1,
+): Promise<unknown> {
   const res = await fetch(ANILIST_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
-    // Cache identical queries for an hour; anime metadata rarely changes minute to minute.
-    next: { revalidate: 3600 },
   });
+
+  if (res.status === 429 && attempt <= 3) {
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const backoff = (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1500) + attempt * 500;
+    await sleep(backoff);
+    return anilistFetchWithRetry(query, variables, attempt + 1);
+  }
 
   const json = await res.json();
 
@@ -121,7 +149,23 @@ async function anilistFetch<T>(
     throw new AnilistError(message, res.status);
   }
 
-  return json.data as T;
+  return json.data;
+}
+
+// unstable_cache caches by the arguments passed to the returned function,
+// server-side, regardless of HTTP method — this is what actually keeps
+// repeat identical queries (same trending page, same browse filters, same
+// season) from re-hitting AniList on every page load. A thrown error is
+// never cached, so a failed/rate-limited call doesn't poison the cache for
+// the next request.
+const cachedAnilistFetch = unstable_cache(
+  (query: string, variables: Record<string, unknown>) => anilistFetchWithRetry(query, variables),
+  ["anilist-graphql"],
+  { revalidate: 3600 },
+);
+
+async function anilistFetch<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+  return (await cachedAnilistFetch(query, variables)) as T;
 }
 
 export async function searchAnime(search: string, page = 1, perPage = 20) {

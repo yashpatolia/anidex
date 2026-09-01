@@ -2,6 +2,24 @@
 
 Features scoped for later, not yet built. Ordered roughly by dependency, not priority.
 
+## ~~URGENT — prod is hitting AniList's rate limit~~ — fixed 2026-09-01
+Diagnosed from prod logs (`docker compose logs app` on the VPS): repeated `Error: Too
+Many Requests` (429) from AniList, bad enough that switching between a few pages
+exhausted the limit and tripped the app's error boundary for real users.
+
+Root cause: `anilistFetch()` set `next: { revalidate: 3600 }`, but AniList's API requires
+POST and Next's automatic fetch Data Cache reliably auto-caches GET only — that option was
+a silent no-op, so Browse/Seasonal/Trending/Popular/Top-rated (not covered by the
+`AnimeCache` DB table, unlike per-id lookups) hit AniList completely fresh on every page
+load. Fixed by wrapping the AniList call in `unstable_cache` from `next/cache` instead,
+which caches by arguments server-side regardless of HTTP method. Verified live: an
+identical Browse query issued twice only hit AniList once (confirmed via temporary
+logging, second request ~4x faster and produced no new upstream call). Also added 429
+retry-with-backoff (respects `Retry-After`) as a resilience layer on top.
+Also worth checking once this lands: whether it's actually necessary to keep
+Browse/Seasonal/Trending out of the `AnimeCache` DB table too, or whether `unstable_cache`
+alone is sufficient (simpler, one caching mechanism instead of two).
+
 ## Account settings page
 `/account` (or `/settings`). Needed before some of the below can ship safely.
 - Change password (credentials users only)
