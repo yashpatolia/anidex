@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const result = q ? await searchAnime(q, page) : await getTrendingAnime(page);
     return NextResponse.json(result);
   } catch (err) {
-    console.error("AniList search failed", err);
-    return NextResponse.json({ error: "Failed to fetch from AniList" }, { status: 502 });
+    console.error("Anime search failed", err);
+    return NextResponse.json({ error: "Failed to fetch anime data" }, { status: 502 });
   }
 }

@@ -7,29 +7,90 @@ const ANILIST_URL = "https://graphql.anilist.co";
 export type AnilistMedia = {
   id: number;
   title: { romaji: string | null; english: string | null; native: string | null };
-  coverImage: { large: string | null; color: string | null };
+  coverImage: { extraLarge: string | null; large: string | null; color: string | null };
   bannerImage: string | null;
   description: string | null;
   format: string | null;
   status: string | null;
   episodes: number | null;
   averageScore: number | null;
+  popularity: number | null;
   genres: string[];
   seasonYear: number | null;
+};
+
+export type AnilistMediaDetail = AnilistMedia & {
+  duration: number | null;
+  source: string | null;
+  studios: { nodes: { name: string }[] };
+  relations: {
+    edges: {
+      relationType: string;
+      node: {
+        id: number;
+        type: string;
+        title: { romaji: string | null; english: string | null };
+        coverImage: { large: string | null };
+      };
+    }[];
+  };
+  characters: {
+    edges: {
+      role: string;
+      node: { id: number; name: { full: string | null }; image: { large: string | null } };
+      voiceActors: { id: number; name: { full: string | null }; image: { large: string | null } }[];
+    }[];
+  };
 };
 
 const MEDIA_FIELDS = `
   id
   title { romaji english native }
-  coverImage { large color }
+  coverImage { extraLarge large color }
   bannerImage
   description(asHtml: false)
   format
   status
   episodes
   averageScore
+  popularity
   genres
   seasonYear
+`;
+
+const MEDIA_DETAIL_FIELDS = `
+  ${MEDIA_FIELDS}
+  duration
+  source
+  studios(isMain: true) {
+    nodes { name }
+  }
+  relations {
+    edges {
+      relationType
+      node {
+        id
+        type
+        title { romaji english }
+        coverImage { large }
+      }
+    }
+  }
+  characters(sort: ROLE, perPage: 8) {
+    edges {
+      role
+      node {
+        id
+        name { full }
+        image { large }
+      }
+      voiceActors(language: JAPANESE) {
+        id
+        name { full }
+        image { large }
+      }
+    }
+  }
 `;
 
 class AnilistError extends Error {
@@ -68,7 +129,7 @@ export async function searchAnime(search: string, page = 1, perPage = 20) {
     query ($search: String, $page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
         pageInfo { total currentPage hasNextPage }
-        media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+        media(search: $search, type: ANIME, sort: SEARCH_MATCH, isAdult: false) {
           ${MEDIA_FIELDS}
         }
       }
@@ -80,39 +141,90 @@ export async function searchAnime(search: string, page = 1, perPage = 20) {
   return data.Page;
 }
 
-export async function getAnimeById(id: number): Promise<AnilistMedia | null> {
+export async function getAnimeById(id: number): Promise<AnilistMediaDetail | null> {
   const query = `
     query ($id: Int) {
       Media(id: $id, type: ANIME) {
-        ${MEDIA_FIELDS}
+        ${MEDIA_DETAIL_FIELDS}
       }
     }
   `;
-  const data = await anilistFetch<{ Media: AnilistMedia | null }>(query, { id });
-  return data.Media;
+  try {
+    const data = await anilistFetch<{ Media: AnilistMediaDetail | null }>(query, { id });
+    return data.Media;
+  } catch (err) {
+    // AniList responds with a hard "Not Found" GraphQL error (rather than a
+    // null Media) for an id that doesn't exist. Treat that as a normal miss
+    // so callers can 404; anything else is a real failure and should propagate.
+    if (err instanceof AnilistError && err.status === 404) return null;
+    throw err;
+  }
 }
 
-export async function getAnimeByIds(ids: number[]): Promise<AnilistMedia[]> {
+// Returns the full detail shape (not just the light card fields) so that
+// whatever calls this can also feed src/lib/anime-cache.ts a cache entry
+// that's reusable by the anime detail page too, not just list/card views.
+export async function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
   if (ids.length === 0) return [];
   const query = `
     query ($ids: [Int]) {
       Page(perPage: ${ids.length}) {
         media(id_in: $ids, type: ANIME) {
+          ${MEDIA_DETAIL_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await anilistFetch<{ Page: { media: AnilistMediaDetail[] } }>(query, { ids });
+  return data.Page.media;
+}
+
+export const SEASONS = [
+  { value: "WINTER", label: "Winter" },
+  { value: "SPRING", label: "Spring" },
+  { value: "SUMMER", label: "Summer" },
+  { value: "FALL", label: "Fall" },
+] as const;
+
+// Standard anime-industry season boundaries: Winter Dec-Feb, Spring Mar-May,
+// Summer Jun-Aug, Fall Sep-Nov. December counts toward next year's Winter.
+export function getCurrentSeason(): { season: string; year: number } {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  if (month === 12) return { season: "WINTER", year: year + 1 };
+  if (month <= 2) return { season: "WINTER", year };
+  if (month <= 5) return { season: "SPRING", year };
+  if (month <= 8) return { season: "SUMMER", year };
+  return { season: "FALL", year };
+}
+
+export async function getSeasonalAnime(season: string, year: number, page = 1, perPage = 30) {
+  const query = `
+    query ($page: Int, $perPage: Int, $season: MediaSeason, $year: Int) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { total currentPage hasNextPage lastPage }
+        media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) {
           ${MEDIA_FIELDS}
         }
       }
     }
   `;
-  const data = await anilistFetch<{ Page: { media: AnilistMedia[] } }>(query, { ids });
-  return data.Page.media;
+  const data = await anilistFetch<{
+    Page: {
+      pageInfo: { total: number; currentPage: number; hasNextPage: boolean; lastPage: number };
+      media: AnilistMedia[];
+    };
+  }>(query, { page, perPage, season, year });
+  return data.Page;
 }
 
-export async function getTrendingAnime(page = 1, perPage = 20) {
+async function getMediaBySort(sort: string, page = 1, perPage = 20) {
   const query = `
     query ($page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
         pageInfo { total currentPage hasNextPage }
-        media(type: ANIME, sort: TRENDING_DESC) {
+        media(type: ANIME, sort: ${sort}, isAdult: false) {
           ${MEDIA_FIELDS}
         }
       }
@@ -121,5 +233,114 @@ export async function getTrendingAnime(page = 1, perPage = 20) {
   const data = await anilistFetch<{
     Page: { pageInfo: { total: number; currentPage: number; hasNextPage: boolean }; media: AnilistMedia[] };
   }>(query, { page, perPage });
+  return data.Page;
+}
+
+export function getTrendingAnime(page = 1, perPage = 20) {
+  return getMediaBySort("TRENDING_DESC", page, perPage);
+}
+
+export function getPopularAnime(page = 1, perPage = 20) {
+  return getMediaBySort("POPULARITY_DESC", page, perPage);
+}
+
+export function getTopRatedAnime(page = 1, perPage = 20) {
+  return getMediaBySort("SCORE_DESC", page, perPage);
+}
+
+export type BrowseFilters = {
+  search?: string;
+  genres?: string[];
+  yearFrom?: number;
+  yearTo?: number;
+  formats?: string[];
+  statuses?: string[];
+  minScore?: number;
+  sort?: string;
+  page?: number;
+  perPage?: number;
+};
+
+export const BROWSE_GENRES = [
+  "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror",
+  "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance",
+  "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller",
+] as const;
+
+export const BROWSE_FORMATS = [
+  { value: "TV", label: "TV" },
+  { value: "TV_SHORT", label: "TV Short" },
+  { value: "MOVIE", label: "Movie" },
+  { value: "SPECIAL", label: "Special" },
+  { value: "OVA", label: "OVA" },
+  { value: "ONA", label: "ONA" },
+  { value: "MUSIC", label: "Music" },
+] as const;
+
+export const BROWSE_STATUSES = [
+  { value: "RELEASING", label: "Airing" },
+  { value: "FINISHED", label: "Finished" },
+  { value: "NOT_YET_RELEASED", label: "Upcoming" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "HIATUS", label: "Hiatus" },
+] as const;
+
+export const BROWSE_SORTS = [
+  { value: "POPULARITY_DESC", label: "Popularity" },
+  { value: "SCORE_DESC", label: "Score" },
+  { value: "TRENDING_DESC", label: "Trending" },
+  { value: "START_DATE_DESC", label: "Newest" },
+] as const;
+
+export async function browseAnime(filters: BrowseFilters) {
+  const {
+    search, genres, yearFrom, yearTo, formats, statuses, minScore,
+    sort = "POPULARITY_DESC", page = 1, perPage = 30,
+  } = filters;
+
+  // AniList's date filters are FuzzyDateInt scalars in YYYYMMDD form. To make
+  // a yearFrom..yearTo range inclusive, compare against the day just outside
+  // each end (Dec 31 of the prior year / Jan 1 of the next year).
+  const startDateGreater = yearFrom ? (yearFrom - 1) * 10000 + 1231 : undefined;
+  const startDateLesser = yearTo ? (yearTo + 1) * 10000 + 101 : undefined;
+
+  const query = `
+    query (
+      $page: Int, $perPage: Int, $search: String, $genre_in: [String], $startDateGreater: FuzzyDateInt,
+      $startDateLesser: FuzzyDateInt, $format_in: [MediaFormat], $status_in: [MediaStatus],
+      $minScore: Int, $sort: [MediaSort]
+    ) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { total currentPage hasNextPage lastPage }
+        media(
+          type: ANIME
+          isAdult: false
+          search: $search
+          genre_in: $genre_in
+          startDate_greater: $startDateGreater
+          startDate_lesser: $startDateLesser
+          format_in: $format_in
+          status_in: $status_in
+          averageScore_greater: $minScore
+          sort: $sort
+        ) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await anilistFetch<{
+    Page: {
+      pageInfo: { total: number; currentPage: number; hasNextPage: boolean; lastPage: number };
+      media: AnilistMedia[];
+    };
+  }>(query, {
+    page, perPage, search,
+    genre_in: genres?.length ? genres : undefined,
+    startDateGreater, startDateLesser,
+    format_in: formats?.length ? formats : undefined,
+    status_in: statuses?.length ? statuses : undefined,
+    minScore, sort: [sort],
+  });
   return data.Page;
 }

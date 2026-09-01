@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { getAnimeByIds } from "@/lib/anilist";
+import { getCachedAnimeByIds } from "@/lib/anime-cache";
 import { WatchStatus } from "@/generated/prisma/client";
 
 const upsertSchema = z.object({
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     orderBy: { updatedAt: "desc" },
   });
 
-  const media = await getAnimeByIds(entries.map((e) => e.anilistId));
+  const media = await getCachedAnimeByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
 
   return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnimeById } from "@/lib/anilist";
+import { getCachedAnimeById } from "@/lib/anime-cache";
 
 export async function GET(
   _req: NextRequest,
@@ -12,11 +12,11 @@ export async function GET(
   }
 
   try {
-    const media = await getAnimeById(anilistId);
+    const media = await getCachedAnimeById(anilistId);
     if (!media) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(media);
   } catch (err) {
-    console.error("AniList fetch failed", err);
-    return NextResponse.json({ error: "Failed to fetch from AniList" }, { status: 502 });
+    console.error("Anime fetch failed", err);
+    return NextResponse.json({ error: "Failed to fetch anime data" }, { status: 502 });
   }
 }
