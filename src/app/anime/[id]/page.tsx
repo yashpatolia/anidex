@@ -66,14 +66,20 @@ export default async function AnimeDetailPage({
   const anilistId = Number(id);
   if (!Number.isInteger(anilistId)) notFound();
 
-  const [session, anime] = await Promise.all([auth(), getCachedAnimeById(anilistId)]);
+  // entry only depends on session (not anime), so it shouldn't wait for
+  // both to resolve first — on an AnimeCache miss, getCachedAnimeById can
+  // be the slow one (a live AniList round-trip), and there's no reason the
+  // list-entry lookup should trail behind that instead of running alongside it.
+  const session = await auth();
+  const [anime, entry] = await Promise.all([
+    getCachedAnimeById(anilistId),
+    session?.user
+      ? prisma.animeListEntry.findUnique({
+          where: { userId_anilistId: { userId: session.user.id, anilistId } },
+        })
+      : Promise.resolve(null),
+  ]);
   if (!anime) notFound();
-
-  const entry = session?.user
-    ? await prisma.animeListEntry.findUnique({
-        where: { userId_anilistId: { userId: session.user.id, anilistId } },
-      })
-    : null;
 
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
   const synopsis = plainSynopsis(anime.description);
