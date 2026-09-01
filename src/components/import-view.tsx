@@ -38,6 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type Source = "mal" | "anilist";
+type MalMethod = "file" | "username";
 
 // Custom radio control matching the site's square/hairline design language
 // (the native OS radio reads as a jarring default against it).
@@ -74,6 +75,7 @@ function ModeRadio({
 
 export function ImportView() {
   const [source, setSource] = useState<Source>("mal");
+  const [malMethod, setMalMethod] = useState<MalMethod>("username");
   const [file, setFile] = useState<File | null>(null);
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
@@ -98,13 +100,20 @@ export function ImportView() {
     reset();
   }
 
+  function switchMalMethod(next: MalMethod) {
+    setMalMethod(next);
+    setFile(null);
+    setUsername("");
+    reset();
+  }
+
   async function handlePreview() {
     setError(null);
     setResult(null);
     setLoading(true);
     try {
       let res: Response;
-      if (source === "mal") {
+      if (source === "mal" && malMethod === "file") {
         if (!file) {
           setError("Choose your MAL export file first.");
           return;
@@ -114,6 +123,16 @@ export function ImportView() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ xml }),
+        });
+      } else if (source === "mal") {
+        if (!username.trim()) {
+          setError("Enter your MyAnimeList username first.");
+          return;
+        }
+        res = await fetch("/api/import/mal-account/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim() }),
         });
       } else {
         if (!username.trim()) {
@@ -208,24 +227,59 @@ export function ImportView() {
       </div>
 
       {source === "mal" ? (
-        <div key="mal" className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">
-            MAL export file (.xml)
-          </span>
-          <p className="text-xs text-ash">
-            On MyAnimeList: Profile → List → Export, or go directly to{" "}
-            <span className="text-paper">myanimelist.net/panel.php?go=export</span>. Choose your
-            anime list, request it, then download and select the file it emails you here.
-          </p>
-          <input
-            type="file"
-            accept=".xml"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              reset();
-            }}
-            className="border border-line bg-transparent px-3 py-2 font-mono text-xs text-paper file:mr-3 file:border-0 file:bg-line file:px-3 file:py-1.5 file:font-mono file:text-xs file:uppercase file:tracking-widest file:text-paper"
-          />
+        <div key="mal" className="flex flex-col gap-4">
+          <div className="flex gap-4 font-mono text-[11px] uppercase tracking-widest">
+            {(["username", "file"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMalMethod(m)}
+                className={malMethod === m ? "text-hanko" : "text-ash transition-colors hover:text-paper"}
+              >
+                {m === "username" ? "By username" : "Upload export file"}
+              </button>
+            ))}
+          </div>
+
+          {malMethod === "username" ? (
+            <div key="mal-username" className="flex flex-col gap-2">
+              <span className="font-mono text-[11px] uppercase tracking-widest text-ash">
+                MyAnimeList username
+              </span>
+              <p className="text-xs text-ash">Their anime list must be public.</p>
+              <input
+                type="text"
+                placeholder="username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  reset();
+                }}
+                className="max-w-xs border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
+              />
+            </div>
+          ) : (
+            <div key="mal-file" className="flex flex-col gap-2">
+              <span className="font-mono text-[11px] uppercase tracking-widest text-ash">
+                MAL export file (.xml)
+              </span>
+              <p className="text-xs text-ash">
+                Use this if your list is private. On MyAnimeList: Profile → List → Export, or go
+                directly to <span className="text-paper">myanimelist.net/panel.php?go=export</span>.
+                Choose your anime list, request it, then download and select the file it emails
+                you here.
+              </p>
+              <input
+                type="file"
+                accept=".xml"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null);
+                  reset();
+                }}
+                className="border border-line bg-transparent px-3 py-2 font-mono text-xs text-paper file:mr-3 file:border-0 file:bg-line file:px-3 file:py-1.5 file:font-mono file:text-xs file:uppercase file:tracking-widest file:text-paper"
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div key="anilist" className="flex flex-col gap-2">
