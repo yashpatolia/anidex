@@ -30,11 +30,21 @@ jobs:
         id: meta
         run: echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          # VPS is arm64 (aarch64); the GitHub runner is amd64, so this
+          # cross-builds via QEMU. Update/add platforms here if the VPS
+          # architecture ever changes.
+          platforms: linux/arm64
           tags: |
             ${{ steps.meta.outputs.image }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
