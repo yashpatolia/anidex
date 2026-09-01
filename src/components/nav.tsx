@@ -45,6 +45,12 @@ export async function Nav() {
               >
                 Profile
               </Link>
+              <Link
+                href="/account"
+                className="hidden px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper sm:block"
+              >
+                Account
+              </Link>
               <form
                 action={async () => {
                   "use server";

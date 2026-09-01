@@ -184,8 +184,8 @@ export function ProfileView({
   stats: Stats;
 }) {
   const [prefs, setPrefs] = useState(initialPrefs);
-  const [displayName, setDisplayName] = useState(name ?? "");
-  const [displayBio, setDisplayBio] = useState(bio ?? "");
+  const displayName = name ?? "";
+  const displayBio = bio ?? "";
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -234,7 +234,7 @@ export function ProfileView({
       await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: displayName, bio: displayBio, profilePrefs: prefs }),
+        body: JSON.stringify({ profilePrefs: prefs }),
       });
       setEditing(false);
     } finally {
@@ -294,27 +294,13 @@ export function ProfileView({
 
         {editing && (
           <div className="flex flex-col gap-6 border border-line p-5">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Display name</span>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  maxLength={60}
-                  className="border border-line bg-ink px-3 py-2 text-sm text-paper focus:border-hanko focus:outline-none"
-                />
-              </label>
-              <label className="flex flex-[2] flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Bio</span>
-                <input
-                  value={displayBio}
-                  onChange={(e) => setDisplayBio(e.target.value)}
-                  maxLength={280}
-                  placeholder="A line about your taste in anime"
-                  className="border border-line bg-ink px-3 py-2 text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-                />
-              </label>
-            </div>
+            <p className="font-mono text-[11px] text-ash">
+              Display name and bio moved to{" "}
+              <Link href="/account" className="text-paper underline underline-offset-2 hover:text-hanko">
+                Account settings
+              </Link>
+              .
+            </p>
 
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Accent color</span>
