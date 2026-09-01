@@ -14,11 +14,6 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
 - Source data: AniList's `recommendations` connection on `Media` (peer-sourced, already exists on their API, not yet in our `MEDIA_DETAIL_FIELDS`), cross-referenced against what's already tracked (exclude those)
 - Alternative/supplement: genre-overlap scoring against the user's own list using data already in `AnimeCache`, no extra AniList calls needed
 
-## Airing calendar
-- New `/airing` page: week view of upcoming episodes for anime the user is tracking as Watching
-- Data source: AniList's `nextAiringEpisode` field on `Media` (not yet in our types/queries)
-- Natural pairing with a notification later (flagged as a bigger bet, not in this batch)
-
 ## UI/UX polish batch
 Flagged 2026-09-01, not yet scoped in detail — nothing currently open here.
 
