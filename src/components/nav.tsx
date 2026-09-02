@@ -3,6 +3,7 @@ import { auth, signOut } from "@/lib/auth";
 import { NavSearch } from "@/components/nav-search";
 import { MobileMenuToggle } from "@/components/mobile-menu-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { Logo } from "@/components/logo";
 
 const linkClass =
   "whitespace-nowrap px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper";
@@ -37,8 +38,14 @@ export async function Nav() {
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="font-display text-lg tracking-tight text-paper focus:outline-none focus-visible:ring-1 focus-visible:ring-hanko"
+            className="flex items-center gap-[9px] font-display text-lg tracking-tight text-paper focus:outline-none focus-visible:ring-1 focus-visible:ring-hanko"
           >
+            {/* items-center aligns the two boxes, not their ink — "AniDex"
+                has no descenders, so its glyph ink sits above the vertical
+                center of its own line box while the mark (a full-bleed
+                square) has none of that asymmetry. A ~2px nudge lines up
+                the actual visual weight instead of the boxes. */}
+            <Logo size={18} className="translate-y-[2px]" />
             AniDex
           </Link>
 
