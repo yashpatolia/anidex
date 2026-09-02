@@ -4,7 +4,7 @@ import { NavSearch } from "@/components/nav-search";
 import { MobileMenuToggle } from "@/components/mobile-menu-toggle";
 
 const linkClass =
-  "px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper";
+  "whitespace-nowrap px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper";
 
 export async function Nav() {
   const session = await auth();
@@ -49,9 +49,14 @@ export async function Nav() {
               Seasonal
             </Link>
             {session?.user && (
-              <Link href="/airing" className={linkClass}>
-                Airing
-              </Link>
+              <>
+                <Link href="/airing" className={linkClass}>
+                  Airing
+                </Link>
+                <Link href="/recommendations" className={linkClass}>
+                  For You
+                </Link>
+              </>
             )}
           </nav>
         </div>
@@ -92,9 +97,14 @@ export async function Nav() {
                   Seasonal
                 </Link>
                 {session?.user && (
-                  <Link href="/airing" className={linkClass}>
-                    Airing
-                  </Link>
+                  <>
+                    <Link href="/airing" className={linkClass}>
+                      Airing
+                    </Link>
+                    <Link href="/recommendations" className={linkClass}>
+                      For You
+                    </Link>
+                  </>
                 )}
               </nav>
 

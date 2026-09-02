@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getLandingRails } from "@/lib/anilist";
 import { getTrackedAnilistIds } from "@/lib/list-status";
+import { getRecommendationRails } from "@/lib/recommendations";
 import { AnimeRail } from "@/components/anime-rail";
 import { HeroGallery } from "@/components/hero-gallery";
 
@@ -10,9 +11,14 @@ export async function LandingPage() {
     auth(),
     getLandingRails(24),
   ]);
-  const trackedIds = session?.user
-    ? [...(await getTrackedAnilistIds(session.user.id))]
-    : [];
+  const [trackedIds, recommended] = await Promise.all([
+    session?.user ? [...(await getTrackedAnilistIds(session.user.id))] : [],
+    // Only ever the single top-genre row here — Home also serves signed-out
+    // visitors browsing the public trending/popular rails, so this stays a
+    // light, single-row taste of what /recommendations has more of, not a
+    // second dedicated page's worth.
+    session?.user ? getRecommendationRails(session.user.id, { maxRails: 1, perRail: 18 }) : [],
+  ]);
 
   const galleryItems = trending
     .slice(0, 5)
@@ -57,9 +63,20 @@ export async function LandingPage() {
         </div>
       </section>
 
+      {recommended[0] && <AnimeRail title={recommended[0].title} media={recommended[0].media} />}
       <AnimeRail title="Trending now" media={trending} trackedIds={trackedIds} />
       <AnimeRail title="All-time favorites" media={popular} trackedIds={trackedIds} />
       <AnimeRail title="Top rated" media={topRated} trackedIds={trackedIds} />
+      {recommended.length > 0 && (
+        <div className="border-t border-line px-8 py-6 2xl:px-16">
+          <Link
+            href="/recommendations"
+            className="font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
+          >
+            More recommendations →
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
