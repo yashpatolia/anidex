@@ -25,7 +25,6 @@ import {
   type SortMode,
   type ViewMode,
 } from "@/lib/list-view";
-import type { FollowListEntry } from "@/lib/follows";
 
 // One page for both /profile (redirects here for the signed-in user) and
 // /u/[username] (anyone else, or the owner viewing their own even while
@@ -57,8 +56,6 @@ export function ProfilePageView({
   viewerTrackedIds: Set<number>;
   follow: {
     counts: { followers: number; following: number };
-    followers: FollowListEntry[];
-    following: FollowListEntry[];
     showButton: boolean;
     viewerIsFollowing: boolean;
   };
@@ -178,8 +175,12 @@ export function ProfilePageView({
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-widest text-ash">
-          <FollowList label="Followers" count={follow.counts.followers} entries={follow.followers} />
-          <FollowList label="Following" count={follow.counts.following} entries={follow.following} />
+          <Link href={`/u/${username}/followers`} className="transition-colors hover:text-hanko">
+            <span className="text-paper">{follow.counts.followers}</span> followers
+          </Link>
+          <Link href={`/u/${username}/following`} className="transition-colors hover:text-hanko">
+            <span className="text-paper">{follow.counts.following}</span> following
+          </Link>
         </div>
 
         {isOwner && editing && (
@@ -420,35 +421,5 @@ export function ProfilePageView({
         <p className="py-16 text-center text-sm text-ash">Nothing in {username}&apos;s list matches &quot;{search}&quot;.</p>
       )}
     </main>
-  );
-}
-
-// A private-profile follower/following still shows up here (following
-// doesn't require the *follower's* profile to be public, only the
-// followed-page's), just without a link — visiting their /u/ page would
-// 404 for anyone but them.
-function FollowList({ label, count, entries }: { label: string; count: number; entries: FollowListEntry[] }) {
-  if (count === 0) return <span>0 {label.toLowerCase()}</span>;
-  return (
-    <details className="[&_summary]:cursor-pointer">
-      <summary>
-        <span className="text-paper">{count}</span> {label.toLowerCase()}
-      </summary>
-      <ul className="mt-2 flex flex-col gap-1 normal-case tracking-normal">
-        {entries.map((e) =>
-          e.isPublic ? (
-            <li key={e.username}>
-              <Link href={`/u/${e.username}`} className="text-paper transition-colors hover:text-hanko">
-                {e.username}
-              </Link>
-            </li>
-          ) : (
-            <li key={e.username} className="text-ash">
-              {e.username}
-            </li>
-          ),
-        )}
-      </ul>
-    </details>
   );
 }

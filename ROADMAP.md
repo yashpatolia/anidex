@@ -30,6 +30,16 @@ backlog per anime so a long-unwatched show doesn't flood the inbox on first sync
 
 ## Following — shipped
 Follow/unfollow between users, gated to public profiles only (the Follow button only appears on
-`/u/[username]`, which already only exists for public profiles). Follower/following counts and
-expandable lists live on the public profile page only, not on `/account`. No activity feed yet
-(see above) - following is just the relationship for now.
+`/u/[username]`, which already only exists for public profiles). Follower/following counts on the
+profile page link to dedicated `/u/[username]/followers` and `/u/[username]/following` pages, each
+with a Follow button per row. `/people` (linked from the nav) is a username search for finding and
+following people directly. No activity feed yet (see above) - following is just the relationship
+for now.
+
+## Profile page unification — shipped
+`/profile` and `/u/[username]` used to be two separate components (`ProfileView` and
+`PublicProfileView`) that had already drifted apart once. `/profile` now redirects to
+`/u/[username]` for the signed-in user, and both routes render the same `ProfilePageView`
+component - the owner's editable view and everyone else's read-only view differ only by an
+`isOwner` flag, so they can't drift again. The owner can also now view their own profile even
+while it's set to private; everyone else still gets the same 404 as an unknown username.

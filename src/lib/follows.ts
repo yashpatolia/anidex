@@ -70,3 +70,39 @@ export async function getFollowing(userId: string, limit = 200): Promise<FollowL
   });
   return hydrateFollowList(rows.map((r) => r.followingId));
 }
+
+// The signed-in viewer's own following set, keyed by username — used to
+// render a per-row Follow/Following button on a list of other users (search
+// results, someone's followers/following page) without one query per row.
+export async function getViewerFollowingUsernames(viewerId: string): Promise<Set<string>> {
+  const rows = await prisma.follow.findMany({
+    where: { followerId: viewerId },
+    select: { following: { select: { username: true } } },
+  });
+  return new Set(rows.map((r) => r.following.username).filter((u): u is string => u != null));
+}
+
+export type UserSearchResult = { username: string; bio: string | null; isFollowing: boolean };
+
+// Public profiles only, matching src/app/api/follow/route.ts's own gating —
+// searching up someone whose profile is private would just lead to a 404,
+// so there's nothing useful to show for them here either.
+export async function searchPublicUsers(query: string, viewerId: string, limit = 20): Promise<UserSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const [users, followingUsernames] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        username: { startsWith: q.toLowerCase() },
+        NOT: { id: viewerId },
+      },
+      select: { username: true, bio: true, profilePrefs: true },
+      take: limit * 2, // isPublic isn't stored as its own filterable column (see profilePrefs' JSON shape note in schema.prisma), so over-fetch and filter in JS
+    }),
+    getViewerFollowingUsernames(viewerId),
+  ]);
+  return users
+    .filter((u) => u.username != null && normalizePrefs(u.profilePrefs).isPublic)
+    .slice(0, limit)
+    .map((u) => ({ username: u.username!, bio: u.bio, isFollowing: followingUsernames.has(u.username!) }));
+}

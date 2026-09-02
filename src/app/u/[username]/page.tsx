@@ -5,26 +5,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 import { getTrackedAnilistIds } from "@/lib/list-status";
-import { normalizePrefs } from "@/lib/profile-prefs";
-import { getFollowCounts, getFollowers, getFollowing, isFollowing } from "@/lib/follows";
+import { resolveProfileAccess } from "@/lib/profile-access";
+import { getFollowCounts, isFollowing } from "@/lib/follows";
 import { ProfilePageView } from "@/components/profile-page-view";
-
-// A private profile is visible only to the account it belongs to — everyone
-// else gets exactly the same "not found" as a username that doesn't exist
-// at all, same principle as not leaking registered-email existence
-// elsewhere in this app. That's why this needs the viewer's id *before*
-// deciding what to return, unlike a plain public-only lookup.
-async function findProfileUser(username: string, viewerId: string | undefined) {
-  const user = await prisma.user.findUnique({
-    where: { username },
-    select: { username: true, bio: true, profilePrefs: true, id: true },
-  });
-  if (!user) return null;
-  const prefs = normalizePrefs(user.profilePrefs);
-  const isOwner = viewerId === user.id;
-  if (!prefs.isPublic && !isOwner) return null;
-  return { ...user, prefs, isOwner };
-}
 
 export async function generateMetadata({
   params,
@@ -33,7 +16,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
   const session = await auth();
-  const user = await findProfileUser(username, session?.user?.id);
+  const user = await resolveProfileAccess(username, session?.user?.id);
   return { title: user ? `${user.username}'s list` : "Profile" };
 }
 
@@ -46,20 +29,17 @@ export default async function ProfilePage({
   const session = await auth();
   const viewerId = session?.user?.id;
 
-  // findUnique on the raw param first (cheap, indexed) so a private or
-  // nonexistent username both fall through to notFound() without ever
-  // fetching AniList data.
-  const user = await findProfileUser(username, viewerId);
+  // Cheap, indexed lookup first, so a private or nonexistent username both
+  // fall through to notFound() without ever fetching AniList data.
+  const user = await resolveProfileAccess(username, viewerId);
   if (!user) notFound();
 
-  const [entries, followCounts, followers, following] = await Promise.all([
+  const [entries, followCounts] = await Promise.all([
     prisma.animeListEntry.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
     }),
     getFollowCounts(user.id),
-    getFollowers(user.id),
-    getFollowing(user.id),
   ]);
 
   if (user.isOwner && entries.length === 0) {
@@ -125,7 +105,7 @@ export default async function ProfilePage({
 
   return (
     <ProfilePageView
-      username={user.username!}
+      username={user.username}
       bio={user.bio}
       prefs={user.prefs}
       entries={listEntries}
@@ -134,8 +114,6 @@ export default async function ProfilePage({
       viewerTrackedIds={viewerTrackedIds}
       follow={{
         counts: followCounts,
-        followers,
-        following,
         showButton: Boolean(viewerId) && !user.isOwner,
         viewerIsFollowing,
       }}
