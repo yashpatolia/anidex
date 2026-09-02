@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { normalizePrefs } from "@/lib/profile-prefs";
+import { getFollowCounts, getFollowers, getFollowing, isFollowing } from "@/lib/follows";
 import { PublicProfileView } from "@/components/public-profile-view";
 
 async function findPublicUser(username: string) {
@@ -43,13 +44,20 @@ export default async function PublicProfilePage({
   const user = await findPublicUser(username);
   if (!user) notFound();
 
-  const [session, entries] = await Promise.all([
+  const [session, entries, followCounts, followers, following] = await Promise.all([
     auth(),
     prisma.animeListEntry.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
     }),
+    getFollowCounts(user.id),
+    getFollowers(user.id),
+    getFollowing(user.id),
   ]);
+
+  const viewerId = session?.user?.id;
+  const isOwnProfile = viewerId === user.id;
+  const viewerIsFollowing = viewerId && !isOwnProfile ? await isFollowing(viewerId, user.id) : false;
 
   const media = await getCachedAnimeCardsByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
@@ -95,6 +103,13 @@ export default async function PublicProfilePage({
       entries={listEntries}
       stats={{ total: entries.length, episodesWatched, avgScore, topGenres }}
       viewerTrackedIds={viewerTrackedIds}
+      follow={{
+        counts: followCounts,
+        followers,
+        following,
+        showButton: Boolean(viewerId) && !isOwnProfile,
+        viewerIsFollowing,
+      }}
     />
   );
 }

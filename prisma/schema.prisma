@@ -45,6 +45,10 @@ model User {
   sessions      Session[]
   listEntries   AnimeListEntry[]
   notifications Notification[]
+  // Rows where this user is the one doing the following / being followed.
+  // See Follow below for why these are two separate relations on one model.
+  following     Follow[]         @relation("Following")
+  followers     Follow[]         @relation("Followers")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,4 +171,22 @@ model Notification {
 
   @@unique([userId, anilistId, episode])
   @@index([userId, read])
+}
+
+// One row per follow relationship. Restricted at the application layer
+// (src/lib/follows.ts) to targets with a public profile — a private
+// profile has no page to follow *from*, so this table never needs to
+// distinguish "private" from "doesn't exist" the way findPublicUser does.
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
 }

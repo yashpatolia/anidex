@@ -19,7 +19,7 @@ Also flagged during the original roadmap discussion, not selected for this batch
 - Total watch time stat (`episodes watched × cached duration`)
 - Scheduled jobs for `AnimeTitle` index refresh and `AnimeCache` warming (currently manual scripts)
 - Sequel-announced notifications (new episode airing shipped, see below; this needs separate change-detection infrastructure)
-- Social layer (following, activity feed, reviews) — bigger product decision, not just a feature
+- Activity feed and reviews/comments (the rest of the social layer beyond following, see below) — separate product decisions, not started
 
 ## Notifications (new episode airing) — shipped
 Bell icon on the nav with a dropdown, backed by a persistent inbox (`Notification` table) with
@@ -27,3 +27,9 @@ read/unread state, not a live-computed panel. Generated lazily on bell-open (no 
 exists yet): checks the signed-in user's Watching/Rewatching list against AniList's airing data
 and inserts a row for any episode aired since their last logged progress, capped at 5 episodes of
 backlog per anime so a long-unwatched show doesn't flood the inbox on first sync.
+
+## Following — shipped
+Follow/unfollow between users, gated to public profiles only (the Follow button only appears on
+`/u/[username]`, which already only exists for public profiles). Follower/following counts and
+expandable lists live on the public profile page only, not on `/account`. No activity feed yet
+(see above) - following is just the relationship for now.
