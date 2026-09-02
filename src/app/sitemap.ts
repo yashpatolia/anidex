@@ -12,25 +12,19 @@ const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 export const dynamic = "force-dynamic";
 
 // Next's file-convention sitemap — served at /sitemap.xml, listed in
-// robots.ts. Capped at AniList's title index rather than every id AniList
-// has ever assigned: only anime this app actually knows about (has been
-// searched/browsed at least once — see scripts/sync-anime-titles.ts) has a
-// page worth indexing here, same anime-cache-is-lazy principle as the rest
-// of the app.
-const MAX_ANIME_URLS = 5000;
-
+// robots.ts. Deliberately does NOT list every /anime/[id] page: that
+// content is largely a mirror of AniList's own synopsis/metadata, the same
+// as dozens of other tracker sites — on a brand-new domain with no
+// authority yet, spending the sitemap (and Google's limited initial crawl
+// budget) on thousands of near-duplicate pages would come at the expense
+// of what's actually distinctive here. Anime pages are still fully
+// crawlable (robots.txt allows them) and get found organically via
+// internal links from Browse/Seasonal; this just doesn't spoon-feed them.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [titles, users] = await Promise.all([
-    prisma.animeTitle.findMany({
-      select: { anilistId: true, updatedAt: true },
-      orderBy: { popularity: "desc" },
-      take: MAX_ANIME_URLS,
-    }),
-    prisma.user.findMany({
-      where: { username: { not: null } },
-      select: { username: true, updatedAt: true, profilePrefs: true },
-    }),
-  ]);
+  const users = await prisma.user.findMany({
+    where: { username: { not: null } },
+    select: { username: true, updatedAt: true, profilePrefs: true },
+  });
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: baseUrl, changeFrequency: "daily", priority: 1 },
@@ -40,13 +34,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/login`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${baseUrl}/register`, changeFrequency: "yearly", priority: 0.2 },
   ];
-
-  const animeRoutes: MetadataRoute.Sitemap = titles.map((t) => ({
-    url: `${baseUrl}/anime/${t.anilistId}`,
-    lastModified: t.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
 
   // Only accounts that have actually opted their list into being public —
   // same rule enforced (for viewing, not just listing) by
@@ -60,5 +47,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.4,
     }));
 
-  return [...staticRoutes, ...animeRoutes, ...profileRoutes];
+  return [...staticRoutes, ...profileRoutes];
 }
