@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Zen_Kaku_Gothic_New, IBM_Plex_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 import "./globals.css";
 
 // preload: false on both — Zen Kaku Gothic New is a Japanese-script family;
@@ -60,7 +61,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-ink text-paper font-body">
         <Providers>
           <Nav />
-          {children}
+          <div className="flex flex-1 flex-col">{children}</div>
+          <Footer />
         </Providers>
       </body>
     </html>
