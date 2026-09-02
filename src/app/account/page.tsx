@@ -20,6 +20,8 @@ export default async function AccountPage() {
       username: true,
       usernameAutoAssigned: true,
       passwordHash: true,
+      image: true,
+      avatarImage: true,
       accounts: { select: { provider: true } },
     },
   });
@@ -33,6 +35,8 @@ export default async function AccountPage() {
       usernameAutoAssigned={user.usernameAutoAssigned}
       hasPassword={user.passwordHash != null}
       providers={user.accounts.map((a) => a.provider)}
+      avatarSrc={user.avatarImage ?? user.image}
+      hasCustomAvatar={user.avatarImage != null}
     />
   );
 }

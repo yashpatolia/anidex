@@ -51,7 +51,9 @@ component - the owner's editable view and everyone else's read-only view differ 
 while it's set to private; everyone else still gets the same 404 as an unknown username.
 
 ## Profile customization & visual polish — shipped
-- Avatar (Google account picture, when there is one) next to the username
+- Avatar next to the username: a real uploaded picture takes priority, falling back to the Google
+  account picture (if any), falling back to a generated initial-on-a-circle when neither exists
+  (`src/components/avatar.tsx`)
 - Multi-line bio (`Account settings`' bio field is now a textarea, rendered with preserved line
   breaks) instead of a single line
 - Optional full-width banner header, sourced from the `bannerImage` of one of the owner's own
@@ -63,3 +65,6 @@ while it's set to private; everyone else still gets the same 404 as an unknown u
   inline text
 - `src/app/api/profile/route.ts` re-validates that a saved banner/favorite id is actually on the
   owner's own list server-side (silently dropped otherwise), not just trusting the client
+- Profile picture upload (`Account settings`): resized/compressed to a small square JPEG
+  client-side, then stored inline as a data URL on `User.avatarImage` - this app has no blob/file
+  storage, so there's nowhere else to put it. A "Remove" option reverts to the fallback above.

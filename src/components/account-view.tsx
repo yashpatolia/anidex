@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { isValidUsername } from "@/lib/username";
+import { AvatarUpload } from "@/components/avatar-upload";
 
 // Minimal external store so useSyncExternalStore can pick up our own
 // same-tab localStorage writes — the native "storage" event only fires in
@@ -41,6 +42,8 @@ export function AccountView({
   usernameAutoAssigned,
   hasPassword,
   providers,
+  avatarSrc,
+  hasCustomAvatar,
 }: {
   bio: string | null;
   email: string | null;
@@ -48,6 +51,8 @@ export function AccountView({
   usernameAutoAssigned: boolean;
   hasPassword: boolean;
   providers: string[];
+  avatarSrc: string | null;
+  hasCustomAvatar: boolean;
 }) {
   const router = useRouter();
 
@@ -197,6 +202,8 @@ export function AccountView({
       {/* Username / bio */}
       <section className="flex flex-col gap-4">
         <h2 className="font-display text-lg text-paper">Profile</h2>
+
+        <AvatarUpload username={initialUsername || "?"} initialSrc={avatarSrc} initialHasCustom={hasCustomAvatar} />
 
         {usernameAutoAssigned && !nudgeDismissed && (
           <div className="flex items-start justify-between gap-4 border border-line bg-line/20 px-4 py-3">

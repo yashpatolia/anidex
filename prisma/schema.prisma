@@ -36,6 +36,15 @@ model User {
 
   // Profile customization.
   bio          String?
+  // A user-uploaded profile picture, stored inline as a data URL (this app
+  // has no blob/file storage — see the banner picker's own comment in
+  // profile-prefs.ts for the same constraint). Resized/compressed
+  // client-side before upload, so this stays small; validated again
+  // server-side in src/app/api/account/avatar/route.ts. Takes priority
+  // over `image` (the OAuth-provided picture) when rendering — see
+  // src/lib/profile-access.ts. Null falls back to `image`, and then to a
+  // generated initial avatar if that's null too.
+  avatarImage  String?  @db.Text
   // Shape: ProfilePrefs from src/lib/profile-prefs.ts (accent color, section
   // visibility/order, which stats show). Free-form JSON so it can evolve
   // without a migration each time.

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimeCard } from "@/components/anime-card";
 import { AnimeListRow } from "@/components/anime-list-row";
+import { Avatar } from "@/components/avatar";
 import { ExportMenu } from "@/components/export-menu";
 import { SortSelect } from "@/components/sort-select";
 import { FollowButton } from "@/components/follow-button";
@@ -38,7 +39,7 @@ import {
 export function ProfilePageView({
   username,
   bio,
-  image,
+  avatarSrc,
   prefs: initialPrefs,
   entries,
   stats,
@@ -48,7 +49,7 @@ export function ProfilePageView({
 }: {
   username: string;
   bio: string | null;
-  image: string | null;
+  avatarSrc: string | null;
   prefs: ProfilePrefs;
   entries: Entry[];
   stats: Stats;
@@ -177,11 +178,7 @@ export function ProfilePageView({
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="flex items-start gap-4">
-          {image && (
-            <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border border-line">
-              <Image src={image} alt="" fill sizes="56px" className="object-cover" />
-            </span>
-          )}
+          <Avatar src={avatarSrc} username={username} size={56} />
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-3xl text-paper">{username}&apos;s list</h1>
             {displayBio && !editing && (
