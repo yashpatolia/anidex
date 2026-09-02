@@ -18,5 +18,12 @@ Also flagged during the original roadmap discussion, not selected for this batch
 - Studio breakdown stat on Profile (same pattern as existing genre breakdown)
 - Total watch time stat (`episodes watched × cached duration`)
 - Scheduled jobs for `AnimeTitle` index refresh and `AnimeCache` warming (currently manual scripts)
-- Notifications (new episode airing, sequel announced)
+- Sequel-announced notifications (new episode airing shipped, see below; this needs separate change-detection infrastructure)
 - Social layer (following, activity feed, reviews) — bigger product decision, not just a feature
+
+## Notifications (new episode airing) — shipped
+Bell icon on the nav with a dropdown, backed by a persistent inbox (`Notification` table) with
+read/unread state, not a live-computed panel. Generated lazily on bell-open (no scheduled job
+exists yet): checks the signed-in user's Watching/Rewatching list against AniList's airing data
+and inserts a row for any episode aired since their last logged progress, capped at 5 episodes of
+backlog per anime so a long-unwatched show doesn't flood the inbox on first sync.

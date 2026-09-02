@@ -547,6 +547,30 @@ export async function getAiringSchedule(fromUnix: number, toUnix: number): Promi
   return entries;
 }
 
+// --- Notification support (src/lib/notifications) ---
+
+const NEXT_EPISODE_FIELDS = `
+  id
+  nextAiringEpisode { episode }
+`;
+
+export type AnilistNextEpisode = {
+  id: number;
+  // null once a show has finished airing (or never aired episodically to
+  // begin with) — same one-next-episode-only limitation as the airing
+  // calendar's data source.
+  nextAiringEpisode: { episode: number } | null;
+};
+
+// Per-id lookup (unlike getAiringSchedule, which answers "what's airing in
+// this time window" across all of AniList) — this is for checking a
+// specific user's own Watching list against what's already aired, which
+// needs the narrower "given these ids, what's their next episode" shape.
+// Reuses the same chunking/aliasing engine as getAnimeCardsByIds.
+export function getNextEpisodesByIds(ids: number[]): Promise<AnilistNextEpisode[]> {
+  return getMediaByIds<AnilistNextEpisode>(ids, NEXT_EPISODE_FIELDS, 10);
+}
+
 export async function browseAnime(filters: BrowseFilters) {
   const {
     search, genres, yearFrom, yearTo, formats, statuses, minScore,

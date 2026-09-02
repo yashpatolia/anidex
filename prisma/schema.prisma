@@ -41,9 +41,10 @@ model User {
   // without a migration each time.
   profilePrefs Json?
 
-  accounts  Account[]
-  sessions  Session[]
-  listEntries AnimeListEntry[]
+  accounts      Account[]
+  sessions      Session[]
+  listEntries   AnimeListEntry[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,4 +145,26 @@ model AnimeListEntry {
 
   @@unique([userId, anilistId])
   @@index([userId, status])
+}
+
+// Generated lazily, not by a scheduled job (this app doesn't have a task
+// scheduler yet — see ROADMAP.md's separate "Scheduled jobs" line): when a
+// signed-in user opens the notification bell, the server checks their
+// Watching/Rewatching list against AniList's airing data and inserts a row
+// here for any episode that's aired since they last had one generated,
+// then returns the list. The unique constraint below is what makes that
+// safe to re-run on every open — re-checking never creates a duplicate for
+// an episode already notified.
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  anilistId Int
+  episode   Int
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, anilistId, episode])
+  @@index([userId, read])
 }

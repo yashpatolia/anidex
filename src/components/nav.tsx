@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { NavSearch } from "@/components/nav-search";
 import { MobileMenuToggle } from "@/components/mobile-menu-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 
 const linkClass =
   "whitespace-nowrap px-3 py-2 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:bg-line/40 hover:text-paper";
@@ -68,6 +69,9 @@ export async function Nav() {
         <div className="flex items-center justify-end gap-1">
           {session?.user ? (
             <>
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
               <Link href="/profile" className={`hidden sm:block ${linkClass}`}>
                 Profile
               </Link>
@@ -83,6 +87,12 @@ export async function Nav() {
             >
               Log in
             </Link>
+          )}
+
+          {session?.user && (
+            <div className="sm:hidden">
+              <NotificationBell />
+            </div>
           )}
 
           <MobileMenuToggle>
