@@ -7,6 +7,7 @@ import { AnimeCard } from "@/components/anime-card";
 import { AnimeListRow } from "@/components/anime-list-row";
 import { ExportMenu } from "@/components/export-menu";
 import { SortSelect } from "@/components/sort-select";
+import { FollowButton } from "@/components/follow-button";
 import {
   ACCENT_PALETTE,
   SECTION_LABELS,
@@ -24,22 +25,45 @@ import {
   type SortMode,
   type ViewMode,
 } from "@/lib/list-view";
+import type { FollowListEntry } from "@/lib/follows";
 
-export function ProfileView({
+// One page for both /profile (redirects here for the signed-in user) and
+// /u/[username] (anyone else, or the owner viewing their own even while
+// private) — same layout and features either way. `isOwner` is the only
+// thing that changes what renders: editing chrome (Customize/Import/Export)
+// and always-tracked cards for the owner, a Follow button and the viewer's
+// own tracked state for everyone else.
+export function ProfilePageView({
   username,
   bio,
   prefs: initialPrefs,
   entries,
   stats,
+  isOwner,
+  viewerTrackedIds,
+  follow,
 }: {
-  username: string | null;
+  username: string;
   bio: string | null;
   prefs: ProfilePrefs;
   entries: Entry[];
   stats: Stats;
+  isOwner: boolean;
+  // The current *viewer's* own tracked anime, not this page's owner's — a
+  // signed-in visitor can still quick-add anything they see here to their
+  // own list, same as Browse/Seasonal, without it implying anything about
+  // whether the owner has it tracked (they obviously do, it's their entry).
+  // Unused when isOwner (their own cards are always tracked).
+  viewerTrackedIds: Set<number>;
+  follow: {
+    counts: { followers: number; following: number };
+    followers: FollowListEntry[];
+    following: FollowListEntry[];
+    showButton: boolean;
+    viewerIsFollowing: boolean;
+  };
 }) {
   const [prefs, setPrefs] = useState(initialPrefs);
-  const displayUsername = username ?? "";
   const displayBio = bio ?? "";
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -57,12 +81,13 @@ export function ProfileView({
   // react to it by forcing a refetch so this page can't show stale data
   // from before whatever was just edited elsewhere.
   useEffect(() => {
+    if (!isOwner) return;
     function onPageShow(e: PageTransitionEvent) {
       if (e.persisted) router.refresh();
     }
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
-  }, [router]);
+  }, [router, isOwner]);
 
   const maxGenreCount = stats.topGenres[0]?.[1] ?? 1;
 
@@ -92,6 +117,7 @@ export function ProfileView({
         body: JSON.stringify({ profilePrefs: prefs }),
       });
       setEditing(false);
+      router.refresh();
     } finally {
       setSaving(false);
     }
@@ -124,30 +150,39 @@ export function ProfileView({
       <header className="flex flex-col gap-6 border-b border-line pb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="font-display text-3xl text-paper">
-              {displayUsername ? `${displayUsername}'s list` : "Your list"}
-            </h1>
+            <h1 className="font-display text-3xl text-paper">{username}&apos;s list</h1>
             {displayBio && !editing && <p className="max-w-md text-sm text-ash">{displayBio}</p>}
           </div>
           <div className="flex flex-wrap gap-2 sm:flex-shrink-0 sm:flex-nowrap">
-            <Link
-              href="/import"
-              className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
-            >
-              Import
-            </Link>
-            <ExportMenu />
-            <button
-              type="button"
-              onClick={() => setEditing((e) => !e)}
-              className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
-            >
-              {editing ? "Close" : "Customize"}
-            </button>
+            {isOwner ? (
+              <>
+                <Link
+                  href="/import"
+                  className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
+                >
+                  Import
+                </Link>
+                <ExportMenu />
+                <button
+                  type="button"
+                  onClick={() => setEditing((e) => !e)}
+                  className="border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
+                >
+                  {editing ? "Close" : "Customize"}
+                </button>
+              </>
+            ) : (
+              follow.showButton && <FollowButton username={username} initialFollowing={follow.viewerIsFollowing} />
+            )}
           </div>
         </div>
 
-        {editing && (
+        <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-widest text-ash">
+          <FollowList label="Followers" count={follow.counts.followers} entries={follow.followers} />
+          <FollowList label="Following" count={follow.counts.following} entries={follow.following} />
+        </div>
+
+        {isOwner && editing && (
           <div className="flex flex-col gap-6 border border-line p-5">
             <p className="font-mono text-[11px] text-ash">
               Username and bio moved to{" "}
@@ -252,14 +287,11 @@ export function ProfileView({
                 />
                 Anyone can view this list
               </label>
-              {prefs.isPublic && displayUsername && (
+              {prefs.isPublic && (
                 <p className="font-mono text-[11px] text-ash">
                   Visible at{" "}
-                  <Link
-                    href={`/u/${displayUsername}`}
-                    className="text-paper underline underline-offset-2 hover:text-hanko"
-                  >
-                    /u/{displayUsername}
+                  <Link href={`/u/${username}`} className="text-paper underline underline-offset-2 hover:text-hanko">
+                    /u/{username}
                   </Link>
                 </p>
               )}
@@ -315,7 +347,7 @@ export function ProfileView({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search your list"
+            placeholder={`Search ${username}'s list`}
             className="w-full max-w-sm border-b border-line bg-transparent py-2 font-body text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
           />
 
@@ -373,7 +405,7 @@ export function ProfileView({
                     <AnimeCard
                       key={entry.id}
                       anime={entry.anime}
-                      initialTracked
+                      initialTracked={isOwner || viewerTrackedIds.has(entry.anime.id)}
                       score={entry.score}
                       dense={viewMode === "compact"}
                     />
@@ -385,8 +417,38 @@ export function ProfileView({
         })}
 
       {query && entries.every((e) => !matchesSearch(e)) && (
-        <p className="py-16 text-center text-sm text-ash">Nothing in your list matches &quot;{search}&quot;.</p>
+        <p className="py-16 text-center text-sm text-ash">Nothing in {username}&apos;s list matches &quot;{search}&quot;.</p>
       )}
     </main>
+  );
+}
+
+// A private-profile follower/following still shows up here (following
+// doesn't require the *follower's* profile to be public, only the
+// followed-page's), just without a link — visiting their /u/ page would
+// 404 for anyone but them.
+function FollowList({ label, count, entries }: { label: string; count: number; entries: FollowListEntry[] }) {
+  if (count === 0) return <span>0 {label.toLowerCase()}</span>;
+  return (
+    <details className="[&_summary]:cursor-pointer">
+      <summary>
+        <span className="text-paper">{count}</span> {label.toLowerCase()}
+      </summary>
+      <ul className="mt-2 flex flex-col gap-1 normal-case tracking-normal">
+        {entries.map((e) =>
+          e.isPublic ? (
+            <li key={e.username}>
+              <Link href={`/u/${e.username}`} className="text-paper transition-colors hover:text-hanko">
+                {e.username}
+              </Link>
+            </li>
+          ) : (
+            <li key={e.username} className="text-ash">
+              {e.username}
+            </li>
+          ),
+        )}
+      </ul>
+    </details>
   );
 }

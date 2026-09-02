@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -6,17 +7,23 @@ import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 import { getTrackedAnilistIds } from "@/lib/list-status";
 import { normalizePrefs } from "@/lib/profile-prefs";
 import { getFollowCounts, getFollowers, getFollowing, isFollowing } from "@/lib/follows";
-import { PublicProfileView } from "@/components/public-profile-view";
+import { ProfilePageView } from "@/components/profile-page-view";
 
-async function findPublicUser(username: string) {
+// A private profile is visible only to the account it belongs to — everyone
+// else gets exactly the same "not found" as a username that doesn't exist
+// at all, same principle as not leaking registered-email existence
+// elsewhere in this app. That's why this needs the viewer's id *before*
+// deciding what to return, unlike a plain public-only lookup.
+async function findProfileUser(username: string, viewerId: string | undefined) {
   const user = await prisma.user.findUnique({
     where: { username },
     select: { username: true, bio: true, profilePrefs: true, id: true },
   });
   if (!user) return null;
   const prefs = normalizePrefs(user.profilePrefs);
-  if (!prefs.isPublic) return null;
-  return { ...user, prefs };
+  const isOwner = viewerId === user.id;
+  if (!prefs.isPublic && !isOwner) return null;
+  return { ...user, prefs, isOwner };
 }
 
 export async function generateMetadata({
@@ -25,27 +32,27 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const user = await findPublicUser(username);
+  const session = await auth();
+  const user = await findProfileUser(username, session?.user?.id);
   return { title: user ? `${user.username}'s list` : "Profile" };
 }
 
-export default async function PublicProfilePage({
+export default async function ProfilePage({
   params,
 }: {
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
+  const session = await auth();
+  const viewerId = session?.user?.id;
 
   // findUnique on the raw param first (cheap, indexed) so a private or
   // nonexistent username both fall through to notFound() without ever
-  // fetching AniList data — no reason to distinguish "doesn't exist" from
-  // "exists but private" to a visitor, same principle as not leaking
-  // registered-email existence elsewhere in this app.
-  const user = await findPublicUser(username);
+  // fetching AniList data.
+  const user = await findProfileUser(username, viewerId);
   if (!user) notFound();
 
-  const [session, entries, followCounts, followers, following] = await Promise.all([
-    auth(),
+  const [entries, followCounts, followers, following] = await Promise.all([
     prisma.animeListEntry.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
@@ -55,9 +62,27 @@ export default async function PublicProfilePage({
     getFollowing(user.id),
   ]);
 
-  const viewerId = session?.user?.id;
-  const isOwnProfile = viewerId === user.id;
-  const viewerIsFollowing = viewerId && !isOwnProfile ? await isFollowing(viewerId, user.id) : false;
+  if (user.isOwner && entries.length === 0) {
+    return (
+      <main className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center gap-4 px-8 text-center">
+        <h1 className="font-display text-3xl text-paper">Nothing tracked yet.</h1>
+        <p className="text-sm text-ash">
+          Search for something you&apos;re watching, or browse what&apos;s trending, and add
+          it to your list. Already tracking one elsewhere?{" "}
+          <Link href="/import" className="text-paper underline underline-offset-2 hover:text-hanko">
+            Import it
+          </Link>
+          .
+        </p>
+        <Link
+          href="/browse"
+          className="mt-2 border border-hanko bg-hanko px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
+        >
+          Browse anime
+        </Link>
+      </main>
+    );
+  }
 
   const media = await getCachedAnimeCardsByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
@@ -90,24 +115,28 @@ export default async function PublicProfilePage({
   }
   const topGenres = [...genreCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
 
-  // The viewer's own tracked anime (not the profile owner's — those are
+  // The viewer's own tracked anime (not this page's owner's — those are
   // exactly what's already being rendered above), so quick-add on this page
   // reflects whether *you*, the visitor, already have something tracked.
-  const viewerTrackedIds = session?.user ? await getTrackedAnilistIds(session.user.id) : new Set<number>();
+  // Irrelevant (and skipped) when the viewer is the owner — their cards are
+  // always tracked.
+  const viewerTrackedIds = viewerId && !user.isOwner ? await getTrackedAnilistIds(viewerId) : new Set<number>();
+  const viewerIsFollowing = viewerId && !user.isOwner ? await isFollowing(viewerId, user.id) : false;
 
   return (
-    <PublicProfileView
+    <ProfilePageView
       username={user.username!}
       bio={user.bio}
       prefs={user.prefs}
       entries={listEntries}
       stats={{ total: entries.length, episodesWatched, avgScore, topGenres }}
+      isOwner={user.isOwner}
       viewerTrackedIds={viewerTrackedIds}
       follow={{
         counts: followCounts,
         followers,
         following,
-        showButton: Boolean(viewerId) && !isOwnProfile,
+        showButton: Boolean(viewerId) && !user.isOwner,
         viewerIsFollowing,
       }}
     />

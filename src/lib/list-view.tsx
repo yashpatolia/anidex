@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import type { AnilistMedia } from "@/lib/anilist";
 
-// Shared between ProfileView (the owner's editable list) and
-// PublicProfileView (anyone else's read-only view of it) — both render the
-// same grouped/sortable/searchable grid of entries, just with different
-// chrome around it.
+// Used by ProfilePageView (src/components/profile-page-view.tsx), the one
+// page rendered at both /profile (redirects here for the signed-in user)
+// and /u/[username] — the grouped/sortable/searchable grid of entries.
 
 export type ViewMode = "grid" | "list" | "compact";
 export type SortMode = "titleAsc" | "titleDesc" | "scoreAsc" | "scoreDesc";
