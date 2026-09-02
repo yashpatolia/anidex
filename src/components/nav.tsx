@@ -33,7 +33,7 @@ export async function Nav() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-ink/95">
-      <div className="relative mx-auto flex h-14 w-full max-w-[1800px] items-center justify-between gap-6 px-8 sm:grid sm:grid-cols-[1fr_auto_1fr] 2xl:px-16">
+      <div className="relative flex h-14 w-full items-center justify-between gap-6 px-8 sm:grid sm:grid-cols-[1fr_auto_1fr] 2xl:px-16">
         <div className="flex items-center gap-6">
           <Link
             href="/"
