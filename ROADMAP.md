@@ -32,9 +32,14 @@ backlog per anime so a long-unwatched show doesn't flood the inbox on first sync
 Follow/unfollow between users, gated to public profiles only (the Follow button only appears on
 `/u/[username]`, which already only exists for public profiles). Follower/following counts on the
 profile page link to dedicated `/u/[username]/followers` and `/u/[username]/following` pages, each
-with a Follow button per row. `/people` (linked from the nav) is a username search for finding and
-following people directly. No activity feed yet (see above) - following is just the relationship
+with a Follow button per row. Finding people to follow is done through the nav search bar (see
+below), not a separate page. No activity feed yet (see above) - following is just the relationship
 for now.
+
+## Unified nav search — shipped
+The nav search bar (`src/components/nav-search.tsx`) now searches both anime and public users
+in one dropdown, in a "People" section above the anime results. Replaced the dedicated `/people`
+search page from the Following work above - one search box instead of two.
 
 ## Profile page unification — shipped
 `/profile` and `/u/[username]` used to be two separate components (`ProfileView` and

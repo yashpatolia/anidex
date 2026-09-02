@@ -86,20 +86,26 @@ export type UserSearchResult = { username: string; bio: string | null; isFollowi
 
 // Public profiles only, matching src/app/api/follow/route.ts's own gating —
 // searching up someone whose profile is private would just lead to a 404,
-// so there's nothing useful to show for them here either.
-export async function searchPublicUsers(query: string, viewerId: string, limit = 20): Promise<UserSearchResult[]> {
+// so there's nothing useful to show for them here either. `viewerId` is
+// optional — signed-out visitors can still search (public profiles are
+// visible to anyone), they just never see `isFollowing: true`.
+export async function searchPublicUsers(
+  query: string,
+  viewerId?: string,
+  limit = 20,
+): Promise<UserSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
   const [users, followingUsernames] = await Promise.all([
     prisma.user.findMany({
       where: {
         username: { startsWith: q.toLowerCase() },
-        NOT: { id: viewerId },
+        NOT: viewerId ? { id: viewerId } : undefined,
       },
       select: { username: true, bio: true, profilePrefs: true },
       take: limit * 2, // isPublic isn't stored as its own filterable column (see profilePrefs' JSON shape note in schema.prisma), so over-fetch and filter in JS
     }),
-    getViewerFollowingUsernames(viewerId),
+    viewerId ? getViewerFollowingUsernames(viewerId) : Promise.resolve(new Set<string>()),
   ]);
   return users
     .filter((u) => u.username != null && normalizePrefs(u.profilePrefs).isPublic)

@@ -5,7 +5,10 @@ import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
 // GET /api/search/quick?q=... — top 5 closest matches for the nav search
 // dropdown. Backed by our local title index (real substring search), not
 // AniList's own fuzzy `search` field, which returns nothing for short
-// fragments like "toni".
+// fragments like "toni". User search is a separate route (see
+// src/app/api/search/quick/users/route.ts) — it's only fetched once the
+// dropdown's "Search people" button is clicked, not alongside every anime
+// search.
 export async function GET(req: NextRequest) {
   const q = new URL(req.url).searchParams.get("q")?.trim();
   if (!q) return NextResponse.json({ results: [] });
