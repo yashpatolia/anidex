@@ -37,9 +37,10 @@ below), not a separate page. No activity feed yet (see above) - following is jus
 for now.
 
 ## Unified nav search — shipped
-The nav search bar (`src/components/nav-search.tsx`) now searches both anime and public users
-in one dropdown, in a "People" section above the anime results. Replaced the dedicated `/people`
-search page from the Following work above - one search box instead of two.
+The nav search bar (`src/components/nav-search.tsx`) searches anime by default; a "Search people
+for '...'" button below those results fetches and shows matching public users in a "People"
+section, only once clicked. Replaced the dedicated `/people` search page from the Following work
+above - one search box instead of two.
 
 ## Profile page unification — shipped
 `/profile` and `/u/[username]` used to be two separate components (`ProfileView` and
@@ -48,3 +49,17 @@ search page from the Following work above - one search box instead of two.
 component - the owner's editable view and everyone else's read-only view differ only by an
 `isOwner` flag, so they can't drift again. The owner can also now view their own profile even
 while it's set to private; everyone else still gets the same 404 as an unknown username.
+
+## Profile customization & visual polish — shipped
+- Avatar (Google account picture, when there is one) next to the username
+- Multi-line bio (`Account settings`' bio field is now a textarea, rendered with preserved line
+  breaks) instead of a single line
+- Optional full-width banner header, sourced from the `bannerImage` of one of the owner's own
+  tracked anime (no image upload/storage in this app - "Header style" toggle in Customize, banner
+  picker only shows entries that actually have one)
+- Up to 6 pinned favorites (also picked from the owner's own list) shown as a strip near the top
+- Accent color: the curated swatches plus a native color picker for anything else
+- Stats (tracked/episodes/avg score/genres) restyled as bordered stat cards instead of plain
+  inline text
+- `src/app/api/profile/route.ts` re-validates that a saved banner/favorite id is actually on the
+  owner's own list server-side (silently dropped otherwise), not just trusting the client

@@ -14,6 +14,8 @@ export type ProfileAccess = {
   id: string;
   username: string;
   bio: string | null;
+  // From Google OAuth only — always null for a credentials-only account.
+  image: string | null;
   prefs: ProfilePrefs;
   isOwner: boolean;
 };
@@ -24,11 +26,11 @@ export async function resolveProfileAccess(
 ): Promise<ProfileAccess | null> {
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, bio: true, profilePrefs: true },
+    select: { id: true, username: true, bio: true, image: true, profilePrefs: true },
   });
   if (!user) return null;
   const prefs = normalizePrefs(user.profilePrefs);
   const isOwner = viewerId === user.id;
   if (!prefs.isPublic && !isOwner) return null;
-  return { id: user.id, username: user.username!, bio: user.bio, prefs, isOwner };
+  return { id: user.id, username: user.username!, bio: user.bio, image: user.image, prefs, isOwner };
 }

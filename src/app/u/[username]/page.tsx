@@ -107,6 +107,7 @@ export default async function ProfilePage({
     <ProfilePageView
       username={user.username}
       bio={user.bio}
+      image={user.image}
       prefs={user.prefs}
       entries={listEntries}
       stats={{ total: entries.length, episodesWatched, avgScore, topGenres }}

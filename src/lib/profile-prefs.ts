@@ -4,6 +4,9 @@
 // WatchStatus enum values as plain strings.
 
 export type SectionKey = "WATCHING" | "COMPLETED" | "PLANNED" | "PAUSED" | "DROPPED";
+export type HeaderStyle = "compact" | "banner";
+
+export const MAX_FAVORITES = 6;
 
 export type ProfilePrefs = {
   accentColor: string;
@@ -13,6 +16,20 @@ export type ProfilePrefs = {
   // to false — a list shouldn't become publicly visible just because
   // usernames exist; the owner has to opt in from Profile's Customize panel.
   isPublic: boolean;
+  // "banner" shows a full-width image (bannerAnilistId's cover art banner)
+  // behind the header; "compact" is the plain solid-background header.
+  // Kept separate from bannerAnilistId being set so switching back to
+  // compact doesn't lose the picked banner.
+  headerStyle: HeaderStyle;
+  // One of the owner's own tracked anime (by AniList id) to source the
+  // banner image from — no image upload/storage in this app, so the banner
+  // is always something already in AniList's own CDN. Null until chosen,
+  // or if headerStyle is "compact".
+  bannerAnilistId: number | null;
+  // Up to MAX_FAVORITES AniList ids, in display order, pinned in a row near
+  // the top of the profile. Must also be present in the owner's own list —
+  // enforced when saving (src/app/api/profile/route.ts), not here.
+  favoriteIds: number[];
 };
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
@@ -34,8 +51,14 @@ export const DEFAULT_PREFS: ProfilePrefs = {
   ],
   stats: { total: true, episodes: true, avgScore: true, genres: true },
   isPublic: false,
+  headerStyle: "compact",
+  bannerAnilistId: null,
+  favoriteIds: [],
 };
 
+// A handful of curated swatches for one-click picks, shown alongside a
+// native color input for anything else — the palette isn't the only way to
+// set accentColor, just the fast path.
 export const ACCENT_PALETTE = [
   { name: "Hanko red", value: "#b23a2e" },
   { name: "Indigo", value: "#3b4a8a" },
@@ -64,5 +87,10 @@ export function normalizePrefs(raw: unknown): ProfilePrefs {
     sections: sections.length ? sections : DEFAULT_PREFS.sections,
     stats: { ...DEFAULT_PREFS.stats, ...r.stats },
     isPublic: r.isPublic ?? DEFAULT_PREFS.isPublic,
+    headerStyle: r.headerStyle === "banner" ? "banner" : DEFAULT_PREFS.headerStyle,
+    bannerAnilistId: typeof r.bannerAnilistId === "number" ? r.bannerAnilistId : DEFAULT_PREFS.bannerAnilistId,
+    favoriteIds: Array.isArray(r.favoriteIds)
+      ? r.favoriteIds.filter((id): id is number => typeof id === "number").slice(0, MAX_FAVORITES)
+      : DEFAULT_PREFS.favoriteIds,
   };
 }

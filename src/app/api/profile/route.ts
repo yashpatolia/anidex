@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
 import { USERNAME_PATTERN } from "@/lib/username";
+import { MAX_FAVORITES } from "@/lib/profile-prefs";
 import { Prisma } from "@/generated/prisma/client";
 
 const sectionSchema = z.object({
@@ -20,6 +21,9 @@ const prefsSchema = z.object({
     genres: z.boolean(),
   }),
   isPublic: z.boolean(),
+  headerStyle: z.enum(["compact", "banner"]),
+  bannerAnilistId: z.number().int().nullable(),
+  favoriteIds: z.array(z.number().int()).max(MAX_FAVORITES),
 });
 
 const bodySchema = z.object({
@@ -37,14 +41,47 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { username, ...rest } = parsed.data;
+  const { username, profilePrefs, ...rest } = parsed.data;
+
+  // A banner or favorite pointing at something not actually on the owner's
+  // list would just be a broken picture (there'd be nothing to look up), so
+  // silently drop anything that doesn't check out rather than erroring —
+  // the client already only offers picks from the owner's own entries.
+  let cleanedPrefs = profilePrefs;
+  if (profilePrefs) {
+    const candidateIds = [
+      ...(profilePrefs.bannerAnilistId != null ? [profilePrefs.bannerAnilistId] : []),
+      ...profilePrefs.favoriteIds,
+    ];
+    const owned = candidateIds.length
+      ? new Set(
+          (
+            await prisma.animeListEntry.findMany({
+              where: { userId, anilistId: { in: candidateIds } },
+              select: { anilistId: true },
+            })
+          ).map((e) => e.anilistId),
+        )
+      : new Set<number>();
+    cleanedPrefs = {
+      ...profilePrefs,
+      bannerAnilistId:
+        profilePrefs.bannerAnilistId != null && owned.has(profilePrefs.bannerAnilistId)
+          ? profilePrefs.bannerAnilistId
+          : null,
+      favoriteIds: profilePrefs.favoriteIds.filter((id) => owned.has(id)),
+    };
+  }
 
   try {
     const user = await prisma.user.update({
       where: { id: userId },
       // Explicitly setting a username (vs. the one auto-generated at
       // signup/backfill) turns off the "pick your own" nudge for good.
-      data: username != null ? { ...rest, username, usernameAutoAssigned: false } : rest,
+      data:
+        username != null
+          ? { ...rest, profilePrefs: cleanedPrefs, username, usernameAutoAssigned: false }
+          : { ...rest, profilePrefs: cleanedPrefs },
     });
     return NextResponse.json({
       bio: user.bio,

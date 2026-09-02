@@ -229,15 +229,16 @@ export function AccountView({
 
         <label className="flex flex-col gap-1.5">
           <span className={labelClass()}>Bio</span>
-          <input
+          <textarea
             value={displayBio}
             onChange={(e) => {
               setDisplayBio(e.target.value);
               setProfileSaved(false);
             }}
             maxLength={280}
-            placeholder="A line about your taste in anime"
-            className={fieldClass()}
+            rows={3}
+            placeholder="A few lines about your taste in anime"
+            className={`resize-none ${fieldClass()}`}
           />
         </label>
         {profileError && <p className="font-mono text-xs text-hanko">{profileError}</p>}
