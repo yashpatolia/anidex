@@ -77,6 +77,25 @@ while it's set to private; everyone else still gets the same 404 as an unknown u
   the profile page (`src/components/share-button.tsx`).
 - Open Graph / Twitter Card metadata site-wide, so links posted in Discord/Twitter/iMessage embed
   with a real title, description, and image instead of a bare URL: anime pages use the anime's own
-  banner/cover art and synopsis; profile pages use the owner's bio and avatar; everything else falls
-  back to a generated brand image (`src/app/opengraph-image.tsx`, built with `next/og` - no static
-  asset needed).
+  banner/cover art and a compact info line (format/episodes/status/year/studio/score/genres, not the
+  synopsis - a link preview has room for one line, not a paragraph); profile pages use the owner's
+  bio and avatar (only when it's a real fetchable URL - a custom-uploaded avatar is stored as a
+  `data:` URI, which crawlers can't fetch, so that case falls back to the default); everything else
+  falls back to a generated brand image (`src/app/opengraph-image.tsx`, built with `next/og` - no
+  static asset needed). That fallback has to be spelled out by URL on any route that sets its own
+  `openGraph` object - Next only auto-injects the file-convention image for routes that don't.
+
+## Profile Customize panel: custom components, drag-to-reorder — shipped
+The panel had grown into a single long column using native browser widgets (a native `<select>` for
+the banner picker, a native `<input type=color>` for accent, native checkboxes) that looked
+inconsistent with the rest of the site and didn't scale well as options were added. Reworked into
+`src/components/profile-customize-panel.tsx`:
+- Laid out as a grid of bordered setting cards instead of one long stack.
+- Accent color: curated swatches plus a typed hex code (`src/components/profile-customize-panel.tsx`'s
+  `HexInput`) instead of the OS's native color picker.
+- Banner picker: a custom typeable combobox (`src/components/combobox.tsx`) instead of a native
+  `<select>` - built for reuse anywhere else a long list needs picking-by-typing.
+- Favorites and every other checkbox (sections, stats, public toggle): a custom-styled checkbox
+  component instead of the browser default.
+- Sections order: drag-and-drop (native HTML5 drag events, no library) in addition to the existing
+  up/down buttons, which stay for keyboard/accessibility.

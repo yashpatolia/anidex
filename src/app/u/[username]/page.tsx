@@ -24,16 +24,24 @@ export async function generateMetadata({
   // renders with real line breaks on the page (see ProfilePageView), this
   // is only the link-preview summary.
   const description = user.bio?.replace(/\s+/g, " ").trim() || undefined;
-  // Their avatar if they have one — otherwise this just falls back to the
-  // site-wide default (src/app/opengraph-image.tsx), same as any other
-  // page that doesn't set its own image.
-  const image = user.avatarSrc ?? undefined;
+  // Their avatar if they have one *and* it's a real fetchable URL —
+  // link-preview crawlers (Discord, Twitter, ...) fetch og:image over
+  // HTTP, they can't render an inline data: URI. A custom-uploaded
+  // avatar is stored as a data: URI (see prisma/schema.prisma's
+  // avatarImage comment), so it's skipped here even though it's shown
+  // fine on the page itself, which just puts it in an <img src>.
+  //
+  // Falls back to the site-wide default image (src/app/opengraph-image.tsx)
+  // by its own URL, spelled out explicitly rather than left to inherit —
+  // Next's file-convention image is only auto-injected for a route that
+  // doesn't otherwise return its own `openGraph`, and this one does.
+  const image = user.avatarSrc?.startsWith("http") ? user.avatarSrc : "/opengraph-image";
 
   return {
     title,
     description,
-    openGraph: { title, description, images: image ? [image] : undefined },
-    twitter: { card: "summary_large_image", title, description, images: image ? [image] : undefined },
+    openGraph: { title, description, images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
 

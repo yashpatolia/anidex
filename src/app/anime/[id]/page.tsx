@@ -55,17 +55,36 @@ export async function generateMetadata({
   if (!anime) return {};
 
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
-  const description = plainSynopsis(anime.description).slice(0, 200) || undefined;
+  // A link preview has room for one line, not a paragraph — the synopsis
+  // read as noise there. The same at-a-glance facts shown on the page
+  // itself (format, episodes, status, year, studio, score, genres) are a
+  // more useful summary for deciding whether to click through.
+  const score = anime.averageScore != null ? Math.round(anime.averageScore / 10) : null;
+  const description =
+    [
+      anime.format && (FORMAT_LABELS[anime.format] ?? anime.format),
+      anime.episodes && `${anime.episodes} episodes`,
+      anime.status && (STATUS_LABELS[anime.status] ?? anime.status),
+      anime.seasonYear,
+      anime.studios.nodes[0]?.name,
+      score != null && `${score}/10`,
+      anime.genres.length > 0 && anime.genres.join(", "),
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined;
   // Prefer the wide banner over the portrait cover — link-preview cards
   // (Discord, Twitter, iMessage) are landscape-shaped, so a banner fills
-  // the frame instead of being letterboxed/cropped down to a sliver.
-  const image = anime.bannerImage ?? anime.coverImage.extraLarge ?? undefined;
+  // the frame instead of being letterboxed/cropped down to a sliver. Falls
+  // back to the site-wide default image by its own URL (see the same
+  // fallback in src/app/u/[username]/page.tsx for why it's spelled out
+  // explicitly instead of left to inherit).
+  const image = anime.bannerImage ?? anime.coverImage.extraLarge ?? "/opengraph-image";
 
   return {
     title,
     description,
-    openGraph: { title, description, images: image ? [image] : undefined },
-    twitter: { card: "summary_large_image", title, description, images: image ? [image] : undefined },
+    openGraph: { title, description, images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
 

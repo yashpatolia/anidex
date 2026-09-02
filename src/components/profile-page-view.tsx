@@ -11,13 +11,8 @@ import { ExportMenu } from "@/components/export-menu";
 import { SortSelect } from "@/components/sort-select";
 import { FollowButton } from "@/components/follow-button";
 import { ShareButton } from "@/components/share-button";
-import {
-  ACCENT_PALETTE,
-  MAX_FAVORITES,
-  SECTION_LABELS,
-  type ProfilePrefs,
-  type SectionKey,
-} from "@/lib/profile-prefs";
+import { ProfileCustomizePanel } from "@/components/profile-customize-panel";
+import { SECTION_LABELS, type ProfilePrefs, type SectionKey } from "@/lib/profile-prefs";
 import {
   COMPACT_COLS,
   GRID_COLS,
@@ -72,7 +67,6 @@ export function ProfilePageView({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
-  const [favoriteSearch, setFavoriteSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortMode, setSortMode] = useState<SortMode>("titleAsc");
   const router = useRouter();
@@ -117,20 +111,11 @@ export function ProfilePageView({
     : undefined;
   const bannerImage = bannerEntry?.anime.bannerImage ?? null;
 
-  // Entries with a bannerImage at all — the only ones that can usefully be
-  // picked as a banner source.
-  const bannerCandidates = entries.filter((e) => e.anime.bannerImage);
-
   const query = search.trim().toLowerCase();
   function matchesSearch(entry: Entry) {
     if (!query) return true;
     return entryTitle(entry).toLowerCase().includes(query);
   }
-
-  const favoriteQuery = favoriteSearch.trim().toLowerCase();
-  const favoritePickList = favoriteQuery
-    ? entries.filter((e) => entryTitle(e).toLowerCase().includes(favoriteQuery))
-    : entries;
 
   async function save() {
     setSaving(true);
@@ -144,34 +129,6 @@ export function ProfilePageView({
       router.refresh();
     } finally {
       setSaving(false);
-    }
-  }
-
-  function moveSection(index: number, direction: -1 | 1) {
-    const next = [...prefs.sections];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setPrefs({ ...prefs, sections: next });
-  }
-
-  function toggleSectionVisible(key: SectionKey) {
-    setPrefs({
-      ...prefs,
-      sections: prefs.sections.map((s) => (s.key === key ? { ...s, visible: !s.visible } : s)),
-    });
-  }
-
-  function toggleStat(key: keyof ProfilePrefs["stats"]) {
-    setPrefs({ ...prefs, stats: { ...prefs.stats, [key]: !prefs.stats[key] } });
-  }
-
-  function toggleFavorite(anilistId: number) {
-    const already = prefs.favoriteIds.includes(anilistId);
-    if (already) {
-      setPrefs({ ...prefs, favoriteIds: prefs.favoriteIds.filter((id) => id !== anilistId) });
-    } else if (prefs.favoriteIds.length < MAX_FAVORITES) {
-      setPrefs({ ...prefs, favoriteIds: [...prefs.favoriteIds, anilistId] });
     }
   }
 
@@ -242,215 +199,14 @@ export function ProfilePageView({
       )}
 
       {isOwner && editing && (
-        <div className="flex flex-col gap-6 border border-line p-5">
-          <p className="font-mono text-[11px] text-ash">
-            Username and bio moved to{" "}
-            <Link href="/account" className="text-paper underline underline-offset-2 hover:text-hanko">
-              Account settings
-            </Link>
-            .
-          </p>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Accent color</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {ACCENT_PALETTE.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  title={c.name}
-                  onClick={() => setPrefs({ ...prefs, accentColor: c.value })}
-                  className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: c.value,
-                    borderColor: prefs.accentColor === c.value ? c.value : "transparent",
-                    outline: prefs.accentColor === c.value ? `2px solid ${c.value}` : "none",
-                    outlineOffset: 2,
-                  }}
-                />
-              ))}
-              <label className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={prefs.accentColor}
-                  onChange={(e) => setPrefs({ ...prefs, accentColor: e.target.value })}
-                  className="h-8 w-8 cursor-pointer border border-line bg-transparent p-0"
-                  title="Custom color"
-                />
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Custom</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Header style</span>
-            <div className="flex border border-line">
-              {(["compact", "banner"] as const).map((style, i) => (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => setPrefs({ ...prefs, headerStyle: style })}
-                  className={`px-4 py-1.5 font-mono text-xs uppercase tracking-widest transition-colors ${
-                    i > 0 ? "border-l border-line" : ""
-                  } ${prefs.headerStyle === style ? "bg-hanko text-paper" : "text-ash hover:text-paper"}`}
-                >
-                  {style}
-                </button>
-              ))}
-            </div>
-            {prefs.headerStyle === "banner" && (
-              <>
-                {bannerCandidates.length === 0 ? (
-                  <p className="font-mono text-[11px] text-ash">
-                    Track something with a banner image on AniList to use it here.
-                  </p>
-                ) : (
-                  <select
-                    value={prefs.bannerAnilistId ?? ""}
-                    onChange={(e) =>
-                      setPrefs({ ...prefs, bannerAnilistId: e.target.value ? Number(e.target.value) : null })
-                    }
-                    className="max-w-xs border border-line bg-ink px-3 py-1.5 font-body text-sm text-paper focus:border-hanko focus:outline-none"
-                  >
-                    <option value="">None selected</option>
-                    {bannerCandidates.map((e) => (
-                      <option key={e.anime.id} value={e.anime.id}>
-                        {entryTitle(e)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">
-              Favorites ({prefs.favoriteIds.length}/{MAX_FAVORITES})
-            </span>
-            <input
-              type="search"
-              value={favoriteSearch}
-              onChange={(e) => setFavoriteSearch(e.target.value)}
-              placeholder="Find something in your list to pin"
-              className="max-w-xs border-b border-line bg-transparent py-1.5 font-body text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-            />
-            <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {favoritePickList.slice(0, 30).map((e) => {
-                const checked = prefs.favoriteIds.includes(e.anime.id);
-                const disabled = !checked && prefs.favoriteIds.length >= MAX_FAVORITES;
-                return (
-                  <label
-                    key={e.id}
-                    className={`flex items-center gap-2 font-mono text-xs text-paper ${disabled ? "opacity-40" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={() => toggleFavorite(e.anime.id)}
-                      className="accent-[color:var(--color-hanko)]"
-                    />
-                    {entryTitle(e)}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">
-              Sections shown &amp; order
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {prefs.sections.map((s, i) => (
-                <div key={s.key} className="flex items-center gap-3">
-                  <div className="flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => moveSection(i, -1)}
-                      disabled={i === 0}
-                      className="font-mono text-[10px] text-ash transition-colors hover:text-hanko disabled:opacity-20"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveSection(i, 1)}
-                      disabled={i === prefs.sections.length - 1}
-                      className="font-mono text-[10px] text-ash transition-colors hover:text-hanko disabled:opacity-20"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-paper">
-                    <input
-                      type="checkbox"
-                      checked={s.visible}
-                      onChange={() => toggleSectionVisible(s.key)}
-                      className="accent-[color:var(--color-hanko)]"
-                    />
-                    {SECTION_LABELS[s.key]}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Stats shown</span>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {(
-                [
-                  ["total", "Total tracked"],
-                  ["episodes", "Episodes watched"],
-                  ["avgScore", "Average score"],
-                  ["genres", "Genre breakdown"],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-paper">
-                  <input
-                    type="checkbox"
-                    checked={prefs.stats[key]}
-                    onChange={() => toggleStat(key)}
-                    className="accent-[color:var(--color-hanko)]"
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ash">Public profile</span>
-            <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-paper">
-              <input
-                type="checkbox"
-                checked={prefs.isPublic}
-                onChange={() => setPrefs({ ...prefs, isPublic: !prefs.isPublic })}
-                className="accent-[color:var(--color-hanko)]"
-              />
-              Anyone can view this list
-            </label>
-            {prefs.isPublic && (
-              <p className="font-mono text-[11px] text-ash">
-                Visible at{" "}
-                <Link href={`/u/${username}`} className="text-paper underline underline-offset-2 hover:text-hanko">
-                  /u/{username}
-                </Link>
-              </p>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
+        <ProfileCustomizePanel
+          username={username}
+          prefs={prefs}
+          setPrefs={setPrefs}
+          entries={entries}
+          saving={saving}
+          onSave={save}
+        />
       )}
 
       <div className="flex flex-wrap gap-3">
