@@ -68,3 +68,15 @@ while it's set to private; everyone else still gets the same 404 as an unknown u
 - Profile picture upload (`Account settings`): resized/compressed to a small square JPEG
   client-side, then stored inline as a data URL on `User.avatarImage` - this app has no blob/file
   storage, so there's nowhere else to put it. A "Remove" option reverts to the fallback above.
+
+## Anime page cleanup, share buttons, link previews — shipped
+- The status/score/progress editor on an anime page (`AddToListControl`) was a permanently-expanded
+  box of buttons; it's now a single pill (current status + score) that opens the same editor as a
+  dropdown, closing on an outside click.
+- Share button (native share sheet on mobile, copies the link elsewhere) on both the anime page and
+  the profile page (`src/components/share-button.tsx`).
+- Open Graph / Twitter Card metadata site-wide, so links posted in Discord/Twitter/iMessage embed
+  with a real title, description, and image instead of a bare URL: anime pages use the anime's own
+  banner/cover art and synopsis; profile pages use the owner's bio and avatar; everything else falls
+  back to a generated brand image (`src/app/opengraph-image.tsx`, built with `next/og` - no static
+  asset needed).

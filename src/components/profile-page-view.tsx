@@ -10,6 +10,7 @@ import { Avatar } from "@/components/avatar";
 import { ExportMenu } from "@/components/export-menu";
 import { SortSelect } from "@/components/sort-select";
 import { FollowButton } from "@/components/follow-button";
+import { ShareButton } from "@/components/share-button";
 import {
   ACCENT_PALETTE,
   MAX_FAVORITES,
@@ -187,6 +188,7 @@ export function ProfilePageView({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:flex-shrink-0 sm:flex-nowrap">
+          <ShareButton title={`${username}'s list`} />
           {isOwner ? (
             <>
               <Link

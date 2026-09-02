@@ -17,7 +17,24 @@ export async function generateMetadata({
   const { username } = await params;
   const session = await auth();
   const user = await resolveProfileAccess(username, session?.user?.id);
-  return { title: user ? `${user.username}'s list` : "Profile" };
+  if (!user) return { title: "Profile" };
+
+  const title = `${user.username}'s list`;
+  // Collapsed to one line for the meta description — the bio itself still
+  // renders with real line breaks on the page (see ProfilePageView), this
+  // is only the link-preview summary.
+  const description = user.bio?.replace(/\s+/g, " ").trim() || undefined;
+  // Their avatar if they have one — otherwise this just falls back to the
+  // site-wide default (src/app/opengraph-image.tsx), same as any other
+  // page that doesn't set its own image.
+  const image = user.avatarSrc ?? undefined;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: image ? [image] : undefined },
+    twitter: { card: "summary_large_image", title, description, images: image ? [image] : undefined },
+  };
 }
 
 export default async function ProfilePage({

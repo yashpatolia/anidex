@@ -25,12 +25,30 @@ const plexMono = IBM_Plex_Mono({
   preload: false,
 });
 
+const description = "A record of everything you've watched.";
+
 export const metadata: Metadata = {
+  // Needed for the openGraph/twitter image URLs below (and each page's own
+  // opengraph-image route) to resolve to absolute URLs — Discord, Twitter,
+  // etc. won't follow a relative one. Falls back to localhost so dev builds
+  // don't warn about a missing metadataBase.
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
   title: {
     default: "AniDex: an anime record",
     template: "AniDex - %s",
   },
-  description: "A record of everything you've watched.",
+  description,
+  openGraph: {
+    siteName: "AniDex",
+    type: "website",
+    title: "AniDex: an anime record",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AniDex: an anime record",
+    description,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCachedAnimeById } from "@/lib/anime-cache";
 import { AddToListControl } from "@/components/add-to-list-control";
+import { ShareButton } from "@/components/share-button";
 import { ScrollRail } from "@/components/scroll-rail";
 
 function plainSynopsis(html: string | null): string {
@@ -54,7 +55,18 @@ export async function generateMetadata({
   if (!anime) return {};
 
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
-  return { title };
+  const description = plainSynopsis(anime.description).slice(0, 200) || undefined;
+  // Prefer the wide banner over the portrait cover — link-preview cards
+  // (Discord, Twitter, iMessage) are landscape-shaped, so a banner fills
+  // the frame instead of being letterboxed/cropped down to a sliver.
+  const image = anime.bannerImage ?? anime.coverImage.extraLarge ?? undefined;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: image ? [image] : undefined },
+    twitter: { card: "summary_large_image", title, description, images: image ? [image] : undefined },
+  };
 }
 
 export default async function AnimeDetailPage({
@@ -112,16 +124,19 @@ export default async function AnimeDetailPage({
           )}
 
           <div className="flex flex-1 flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <h1
-                className="font-display text-3xl text-paper lg:text-4xl"
-                style={anime.bannerImage ? { textShadow: "0 2px 16px rgba(0,0,0,0.85)" } : undefined}
-              >
-                {title}
-              </h1>
-              {anime.title.native && anime.title.native !== title && (
-                <p className="text-sm text-ash">{anime.title.native}</p>
-              )}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <h1
+                  className="font-display text-3xl text-paper lg:text-4xl"
+                  style={anime.bannerImage ? { textShadow: "0 2px 16px rgba(0,0,0,0.85)" } : undefined}
+                >
+                  {title}
+                </h1>
+                {anime.title.native && anime.title.native !== title && (
+                  <p className="text-sm text-ash">{anime.title.native}</p>
+                )}
+              </div>
+              <ShareButton title={title} className="flex-shrink-0" />
             </div>
 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-2 font-mono text-xs uppercase tracking-widest text-ash">
