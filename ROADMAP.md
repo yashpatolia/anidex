@@ -9,11 +9,6 @@ Google-only accounts, delete account, list of linked sign-in methods — all shi
   strand a user with no way back in — revisit once every account is guaranteed to have at
   least one other verified sign-in method)
 
-## Recommendations
-- "Because you completed X" on Profile or a dedicated section
-- Source data: AniList's `recommendations` connection on `Media` (peer-sourced, already exists on their API, not yet in our `MEDIA_DETAIL_FIELDS`), cross-referenced against what's already tracked (exclude those)
-- Alternative/supplement: genre-overlap scoring against the user's own list using data already in `AnimeCache`, no extra AniList calls needed
-
 ## UI/UX polish batch
 Flagged 2026-09-01, not yet scoped in detail — nothing currently open here.
 
