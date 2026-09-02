@@ -2,7 +2,35 @@
 
 A minimalist, self-hosted MyAnimeList-style tracker. Anime metadata (search, titles,
 cover art) is read live from the [AniList GraphQL API](https://docs.anilist.co/); your
-own list state (status/score/progress) lives in a Postgres database you own.
+own list state (status/score/progress) lives in a Postgres database you own. Live at
+[anidex.ca](https://anidex.ca).
+
+## Features
+
+- **List tracking** — status (Watching/Rewatching/Completed/Plan to Watch/On Hold/Dropped),
+  score, episode progress, grid/list/compact views, sort/search/filter.
+- **Browse & Seasonal** — trending/popular/seasonal anime, real substring search backed by a
+  local title index (AniList's own search API returns nothing for short fragments).
+- **Import & Export** — import an existing list from AniList or MyAnimeList (by username or
+  export file); export your own list back out as JSON or CSV any time.
+- **Public profiles** (`/u/[username]`) — opt-in, private by default. Customizable: accent
+  color, an optional full-width banner sourced from one of your own tracked anime, up to 6
+  pinned favorites, section visibility/order (drag-and-drop), which stats show.
+- **Following** — follow/unfollow other public profiles, dedicated followers/following pages,
+  find people via the nav search bar.
+- **Notifications** — a bell with a persistent, read/unread inbox; generated lazily against
+  AniList's airing data when you open it, for any episode aired since you last logged progress.
+- **Airing calendar** — a horizontal Monday–Sunday view of popular currently-airing anime.
+- **Recommendations** — genre-pair co-occurrence over your own watch history (score-weighted,
+  Dropped as a negative signal), as a page and a row on the home page.
+- **Account settings** — username, multi-line bio, profile picture (uploaded or a generated
+  fallback), password (set one even if you signed up with Google), linked sign-in methods,
+  delete account.
+- **Auth** — Google OAuth and email/password, and you can add a password to a Google-only
+  account (or vice versa) so either always gets you into the same account.
+- **Link previews** — Open Graph/Twitter Card metadata everywhere (anime pages use the anime's
+  own art, profiles use the owner's avatar/bio, everything else falls back to a generated brand
+  image), plus `robots.txt` + `sitemap.xml` for search engines.
 
 ## Stack
 
@@ -87,3 +115,26 @@ refresh popularity/titles — it upserts, not replaces.
 
 `GITHUB_TOKEN` is provided automatically by Actions and used both to push to GHCR and
 to let the VPS pull the (private) image.
+
+## Search engine visibility
+
+`NEXTAUTH_URL` doubles as the canonical site URL for `metadataBase`, Open Graph/Twitter
+metadata, and the `robots.txt`/`sitemap.xml` routes (`src/app/robots.ts`,
+`src/app/sitemap.ts`) — make sure it's set to the real `https://` domain in production,
+not a placeholder, or those all silently point at the wrong URL.
+
+To get indexed by Google:
+
+1. Add the domain in [Google Search Console](https://search.google.com/search-console)
+   as a **Domain** property (not "URL prefix") and verify via the DNS TXT record it gives
+   you.
+2. Submit `sitemap.xml` under Sitemaps in Search Console.
+3. Optionally use URL Inspection → Request Indexing on the homepage for a faster first
+   crawl.
+
+The sitemap deliberately lists only the site's own static pages (home, browse, seasonal,
+airing, login, register) — not every `/anime/[id]` or `/u/[username]` page. Those stay
+fully crawlable (`robots.txt` allows them) and get found organically through internal
+links; a brand-new domain's limited initial crawl budget is better spent on what's
+actually distinctive about the site than thousands of pages that are largely a mirror of
+AniList's own metadata.
