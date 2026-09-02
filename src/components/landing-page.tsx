@@ -63,20 +63,22 @@ export async function LandingPage() {
         </div>
       </section>
 
-      {recommended[0] && <AnimeRail title={recommended[0].title} media={recommended[0].media} />}
+      {recommended[0] && (
+        <>
+          <AnimeRail title={recommended[0].title} media={recommended[0].media} />
+          <div className="-mt-4 px-8 pb-6 2xl:px-16">
+            <Link
+              href="/recommendations"
+              className="font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
+            >
+              More recommendations →
+            </Link>
+          </div>
+        </>
+      )}
       <AnimeRail title="Trending now" media={trending} trackedIds={trackedIds} />
       <AnimeRail title="All-time favorites" media={popular} trackedIds={trackedIds} />
       <AnimeRail title="Top rated" media={topRated} trackedIds={trackedIds} />
-      {recommended.length > 0 && (
-        <div className="border-t border-line px-8 py-6 2xl:px-16">
-          <Link
-            href="/recommendations"
-            className="font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
-          >
-            More recommendations →
-          </Link>
-        </div>
-      )}
     </main>
   );
 }
