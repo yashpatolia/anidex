@@ -4,6 +4,13 @@ import { normalizePrefs } from "@/lib/profile-prefs";
 
 const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
+// Queries the DB, so this can't be statically prerendered at build time —
+// the Docker build stage has no database connection at all (that only
+// exists at runtime via docker-compose), which made `npm run build` in CI
+// fail outright trying to prerender this route. Forces it to render per
+// request instead, same as any other page that reads from Prisma.
+export const dynamic = "force-dynamic";
+
 // Next's file-convention sitemap — served at /sitemap.xml, listed in
 // robots.ts. Capped at AniList's title index rather than every id AniList
 // has ever assigned: only anime this app actually knows about (has been
