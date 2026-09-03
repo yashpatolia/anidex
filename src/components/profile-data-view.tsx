@@ -50,13 +50,18 @@ export function ProfileDataView({
   // on first render instead of round-tripping through an effect.
   const [entries, setEntries] = useState<ListEntry[] | null>(() => (ownerAnilistUsername ? null : []));
   const [viewerTrackedIds, setViewerTrackedIds] = useState<Set<number>>(new Set());
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!ownerAnilistUsername) return;
     let cancelled = false;
-    getUserMediaList(ownerAnilistUsername).then((list) => {
-      if (!cancelled) setEntries(list);
-    });
+    getUserMediaList(ownerAnilistUsername)
+      .then((list) => {
+        if (!cancelled) setEntries(list);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -65,14 +70,27 @@ export function ProfileDataView({
   useEffect(() => {
     let cancelled = false;
     if (!viewerAnilistUsername) return;
-    getUserMediaList(viewerAnilistUsername).then((list) => {
-      if (!cancelled) setViewerTrackedIds(new Set(list.map((e) => e.anime.id)));
-    });
+    getUserMediaList(viewerAnilistUsername)
+      .then((list) => {
+        if (!cancelled) setViewerTrackedIds(new Set(list.map((e) => e.anime.id)));
+      })
+      .catch(() => {
+        // Best-effort — worst case, already-tracked cards on this page
+        // briefly show as untracked.
+      });
     return () => {
       cancelled = true;
     };
   }, [viewerAnilistUsername]);
 
+  if (loadError) {
+    return (
+      <main className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center gap-2 px-8 text-center">
+        <h1 className="font-display text-2xl text-paper">Couldn&apos;t load this list from AniList.</h1>
+        <p className="text-sm text-ash">AniList might be rate-limiting or temporarily unavailable. Try reloading.</p>
+      </main>
+    );
+  }
   if (entries === null) return <PageLoading />;
   if (isOwner && entries.length === 0) return <>{emptyOwnerState}</>;
 

@@ -104,7 +104,6 @@ export function AccountView({
         <div className="flex flex-col gap-1.5">
           <span className={labelClass()}>Username</span>
           <p className="font-mono text-sm text-paper">@{initialUsername}</p>
-          <p className="text-xs text-ash">Set from your AniList username, not changeable here.</p>
         </div>
 
         <label className="flex flex-col gap-1.5">

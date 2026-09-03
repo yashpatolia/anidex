@@ -27,17 +27,24 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    getLandingRails(24).then((r) => {
-      if (!cancelled) setRails(r);
-    });
+    getLandingRails(24)
+      .then((r) => {
+        if (!cancelled) setRails(r);
+      })
+      .catch(() => {
+        // Best-effort — leaves rails at their initial empty-ish state
+        // rather than crashing the whole home page on a transient error.
+      });
     // Only ever the single top row here — Home also serves signed-out
     // visitors browsing the public trending/popular rails, so this stays a
     // light, single-row taste of what /recommendations has more of, not a
     // second dedicated page's worth.
     if (signedIn && anilistUsername) {
-      getRecommendationRails(anilistUsername, 1, 18).then((r) => {
-        if (!cancelled) setRecommended(r);
-      });
+      getRecommendationRails(anilistUsername, 1, 18)
+        .then((r) => {
+          if (!cancelled) setRecommended(r);
+        })
+        .catch(() => {});
     }
     return () => {
       cancelled = true;

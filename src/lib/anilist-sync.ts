@@ -181,32 +181,101 @@ export async function deleteListEntryFromAnilist(userId: string, anilistId: numb
 
 export type BulkSyncResult = { pushed: number; deleted: number; failed: number };
 
-// Bulk push for /api/import/commit — throttled the same way every other
-// write is (anilistMutate above), just called in a plain sequential loop
-// here so a big import (hundreds of entries) doesn't fire them all at once
-// and blow straight through the per-request throttle's queue. A large
-// import can genuinely take minutes this way (hundreds of entries at
-// ~28/min); the commit route doesn't await this to completion for that
-// reason — see its own comment.
+// How many aliased mutations/lookups get packed into one HTTP request for
+// a bulk import. AniList's rate limit is per *request*, not per mutation —
+// confirmed live: a single POST with multiple aliased SaveMediaListEntry
+// fields validates and executes each one independently (same trick
+// anilist-client.ts's getMediaByIds already uses for batched reads). A
+// moderate size, not AniList's actual per-request cap (undocumented) —
+// large enough to turn a hundreds-of-entries import into single-digit
+// requests, conservative enough not to build an enormous query string.
+const BULK_CHUNK_SIZE = 25;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+// Inline literals in the query string itself, not GraphQL variables: each
+// alias only needs the args that entry actually has (see the null-score
+// note on syncListEntryToAnilist — omitting the argument, not passing a
+// null-valued variable, is what keeps an unscored entry from zeroing an
+// existing AniList score), and GraphQL requires every declared variable to
+// actually be used, which a conditionally-omitted arg would violate. Every
+// value going into these strings is already validated upstream (zod's
+// z.enum/int checks in the API routes, our own STATUS_TO_ANILIST map) —
+// nothing here is user-typed text that could break out of the query.
+function saveField(alias: string, entry: { anilistId: number; status: WatchStatus; score: number | null; progress: number }): string {
+  const scoreArg = entry.score != null ? `, score: ${entry.score}` : "";
+  return `${alias}: SaveMediaListEntry(mediaId: ${entry.anilistId}, status: ${STATUS_TO_ANILIST[entry.status]}, progress: ${entry.progress}${scoreArg}) { id }`;
+}
+
+async function batchSave(
+  token: string,
+  entries: { anilistId: number; status: WatchStatus; score: number | null; progress: number }[],
+): Promise<number> {
+  let ok = 0;
+  for (const group of chunk(entries, BULK_CHUNK_SIZE)) {
+    const query = `mutation { ${group.map((e, i) => saveField(`m${i}`, e)).join(" ")} }`;
+    try {
+      await anilistMutate(token, query, {});
+      ok += group.length;
+    } catch (err) {
+      // A whole chunk failing (network blip, a transient AniList error) is
+      // rare enough not to warrant per-entry retry logic — the user can
+      // just re-run the import (skipExisting mode skips whatever already
+      // landed) if this happens.
+      console.error(`AniList batch save failed for ${group.length} entries:`, err);
+    }
+  }
+  return ok;
+}
+
+async function batchDelete(token: string, anilistIds: number[]): Promise<number> {
+  let ok = 0;
+  for (const group of chunk(anilistIds, BULK_CHUNK_SIZE)) {
+    try {
+      // DeleteMediaListEntry needs AniList's own list-entry id per anime,
+      // not the media id — batch-lookup those first the same way (see
+      // deleteListEntryFromAnilist for the single-entry version of this).
+      const lookupQuery = `query { ${group.map((id, i) => `l${i}: Media(id: ${id}) { mediaListEntry { id } }`).join(" ")} }`;
+      const lookup = await anilistMutate<Record<string, { mediaListEntry: { id: number } | null } | null>>(
+        token,
+        lookupQuery,
+        {},
+      );
+      const entryIds = group.map((_, i) => lookup[`l${i}`]?.mediaListEntry?.id).filter((id): id is number => id != null);
+      if (entryIds.length === 0) {
+        ok += group.length; // nothing there to delete counts as already done
+        continue;
+      }
+      const deleteQuery = `mutation { ${entryIds.map((id, i) => `d${i}: DeleteMediaListEntry(id: ${id}) { deleted }`).join(" ")} }`;
+      await anilistMutate(token, deleteQuery, {});
+      ok += group.length;
+    } catch (err) {
+      console.error(`AniList batch delete failed for ${group.length} entries:`, err);
+    }
+  }
+  return ok;
+}
+
+// Bulk push for /api/import/commit — batched (see batchSave/batchDelete
+// above) so a large import takes single-digit requests instead of one per
+// entry. The commit route doesn't await this to completion — see its own
+// comment — but batching also means it rarely needs to: even a few hundred
+// entries lands in well under a minute now.
 export async function syncManyToAnilist(
   userId: string,
   toWrite: { anilistId: number; status: WatchStatus; score: number | null; progress: number }[],
   toDelete: number[],
 ): Promise<BulkSyncResult> {
-  let pushed = 0;
-  let deleted = 0;
-  let failed = 0;
+  const token = await getAccessToken(userId);
+  if (!token) return { pushed: 0, deleted: 0, failed: toWrite.length + toDelete.length };
 
-  for (const entry of toWrite) {
-    const ok = await syncListEntryToAnilist(userId, entry.anilistId, entry);
-    if (ok) pushed++;
-    else failed++;
-  }
-  for (const anilistId of toDelete) {
-    const ok = await deleteListEntryFromAnilist(userId, anilistId);
-    if (ok) deleted++;
-    else failed++;
-  }
+  const pushed = await batchSave(token, toWrite);
+  const deleted = await batchDelete(token, toDelete);
+  const failed = toWrite.length - pushed + (toDelete.length - deleted);
 
   return { pushed, deleted, failed };
 }

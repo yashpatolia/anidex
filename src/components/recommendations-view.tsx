@@ -15,9 +15,15 @@ export function RecommendationsView() {
   useEffect(() => {
     if (!anilistUsername) return;
     let cancelled = false;
-    getRecommendationRails(anilistUsername, 8, 18).then((r) => {
-      if (!cancelled) setRails(r);
-    });
+    getRecommendationRails(anilistUsername, 8, 18)
+      .then((r) => {
+        if (!cancelled) setRails(r);
+      })
+      .catch(() => {
+        // Best-effort — falls back to the "nothing to recommend" state
+        // below rather than crashing the page on a transient AniList error.
+        if (!cancelled) setRails([]);
+      });
     return () => {
       cancelled = true;
     };
