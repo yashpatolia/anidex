@@ -260,6 +260,54 @@ export function getAnimeCardsByIds(ids: number[]): Promise<AnilistMedia[]> {
   return getMediaByIds<AnilistMedia>(ids, MEDIA_FIELDS, 10);
 }
 
+// One popularity-sorted candidate pool per genre group, batched into as
+// few requests as possible via aliasing (same trick getMediaByIds already
+// uses for batched id lookups, and the one anilist-sync.ts uses server-side
+// for bulk writes) — used by recommendations-client.ts's genre-pair
+// scoring, one group per row it's considering. AniList's `genre_in` filter
+// is OR, not AND (matches anime with *any* listed genre, confirmed against
+// the live schema — same "_in" semantics as id_in elsewhere), so a group
+// with two genres still needs the caller to filter results down to ones
+// that actually have both; this just gets each group's popularity-ranked
+// pool in as few round trips as possible.
+const GENRE_POOL_ALIASES_PER_REQUEST = 6;
+const GENRE_POOL_PER_PAGE = 30;
+
+export async function getMediaByGenreGroups(groups: string[][]): Promise<AnilistMedia[][]> {
+  if (groups.length === 0) return [];
+
+  const chunks: string[][][] = [];
+  for (let i = 0; i < groups.length; i += GENRE_POOL_ALIASES_PER_REQUEST) {
+    chunks.push(groups.slice(i, i + GENRE_POOL_ALIASES_PER_REQUEST));
+  }
+
+  const results = await Promise.all(
+    chunks.map(async (chunk) => {
+      const query = `
+        query (${chunk.map((_, i) => `$genres${i}: [String]`).join(", ")}) {
+          ${chunk
+            .map(
+              (_, i) => `
+            c${i}: Page(perPage: ${GENRE_POOL_PER_PAGE}) {
+              media(genre_in: $genres${i}, sort: POPULARITY_DESC, type: ANIME, isAdult: false) {
+                ${MEDIA_FIELDS}
+              }
+            }`,
+            )
+            .join("\n")}
+        }
+      `;
+      const variables: Record<string, unknown> = {};
+      chunk.forEach((group, i) => {
+        variables[`genres${i}`] = group;
+      });
+      const data = await anilistFetch<Record<string, { media: AnilistMedia[] }>>(query, variables);
+      return chunk.map((_, i) => data[`c${i}`].media);
+    }),
+  );
+  return results.flat();
+}
+
 export type AnilistListEntry = {
   status: WatchStatus;
   score: number | null;

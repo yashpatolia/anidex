@@ -62,7 +62,7 @@ export async function Nav() {
                   Airing
                 </Link>
                 <Link href="/recommendations" className={linkClass}>
-                  For You
+                  Recommended
                 </Link>
               </>
             )}
@@ -119,7 +119,7 @@ export async function Nav() {
                       Airing
                     </Link>
                     <Link href="/recommendations" className={linkClass}>
-                      For You
+                      Recommended
                     </Link>
                   </>
                 )}
