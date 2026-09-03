@@ -50,7 +50,12 @@ export const DEFAULT_PREFS: ProfilePrefs = {
     { key: "DROPPED", visible: true },
   ],
   stats: { total: true, episodes: true, avgScore: true, genres: true },
-  isPublic: false,
+  // Public by default: AniList itself already only ever shows what a
+  // user's own AniList privacy settings allow (see MediaList.private on
+  // the AniList side), so defaulting AniDex's own profile page to public
+  // too matches what most people expect - visible unless they explicitly
+  // choose otherwise from Profile > Customize.
+  isPublic: true,
   headerStyle: "compact",
   bannerAnilistId: null,
   favoriteIds: [],
