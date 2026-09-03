@@ -10,6 +10,7 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       ANILIST_CLIENT_ID: ${ANILIST_CLIENT_ID}
       ANILIST_CLIENT_SECRET: ${ANILIST_CLIENT_SECRET}
+      MAL_CLIENT_ID: ${MAL_CLIENT_ID}
     depends_on:
       db:
         condition: service_healthy
