@@ -120,17 +120,16 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// AniList's shared anonymous rate limit is easy to trip under real traffic
-// (every uncached anime lookup, and there are several per page load, counts
-// against it) — without a retry here, a transient 429 propagated straight
-// up as an uncaught error and took down the whole page via the error
-// boundary. Retry a couple of times with backoff (respecting Retry-After
-// when AniList sends one) before actually giving up; callers like
-// anime-cache.ts already know how to fall back to stale cached data if this
-// still throws after that.
+// AniList's rate limit is easy to trip — without a retry here, a
+// transient 429 propagated straight up as an uncaught error. Retry a
+// couple of times with backoff (respecting Retry-After when AniList sends
+// one) before actually giving up; callers of this narrowed-down module
+// (generateMetadata, the import flow, export) each decide for themselves
+// how to handle a failure that survives these retries — there's no shared
+// stale-data fallback anymore now that nothing here is cached.
 //
-// Deliberately untyped (returns unknown) — this is wrapped in unstable_cache
-// below, and keeping it non-generic avoids fixing a single type parameter
+// Deliberately untyped (returns unknown) — kept non-generic so the public,
+// generic anilistFetch wrapper below is the only place fixing a type parameter
 // into that cached function for every call site. anilistFetch (the public,
 // generic wrapper) does the cast back to T.
 async function anilistFetchWithRetry(

@@ -114,15 +114,12 @@ enum WatchStatus {
 // lazily: the first request for a given anime fetches from AniList and stores
 // it here; every later request (from any user) is served from this table
 // until it goes stale. See src/lib/anime-cache.ts.
-model AnimeCache {
-  anilistId Int      @id
-  data      Json
-  fetchedAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 // A user's entry for one anime. Anime metadata itself (title, cover art,
-// episode count, etc.) is NOT stored here — see AnimeCache above.
+// episode count, etc.) is never stored server-side at all anymore — every
+// page that needs it fetches AniList live, from the browser, per request.
+// See src/lib/anilist-client.ts's file comment: this app used to have an
+// AnimeCache table here doing exactly that server-side, which AniList's
+// own developers confirmed counts as "hoarding" under their ToS.
 model AnimeListEntry {
   id        String      @id @default(cuid())
   userId    String

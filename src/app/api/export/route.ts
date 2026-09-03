@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
+import { getAnimeCardsByIds } from "@/lib/anilist";
 
 // GET /api/export?format=json|csv — download the signed-in user's own list.
 // Read-only, scoped to userId, no new schema. Row shape is deliberately the
 // same one import's preview/commit routes use (anilistId/status/score/
 // progress), so this can double as the fixture format for testing import.
+//
+// Stayed server-side deliberately (unlike Browse/Seasonal/etc.): this is a
+// one-time, explicit, user-initiated action, not routine browsing traffic
+// — same reasoning as import/resolve.ts's live fallback. Uses
+// src/lib/anilist.ts, which is a live, uncached pass-through (no
+// server-side storage), not the old AnimeCache-backed version.
 function csvCell(value: string | number | null): string {
   const s = value == null ? "" : String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -23,7 +29,7 @@ export async function GET(req: NextRequest) {
     orderBy: { updatedAt: "desc" },
   });
 
-  const media = await getCachedAnimeCardsByIds(entries.map((e) => e.anilistId));
+  const media = await getAnimeCardsByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
 
   const rows = entries.map((e) => {

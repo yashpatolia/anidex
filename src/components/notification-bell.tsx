@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import type { NotificationItem } from "@/lib/notifications";
+import { syncAndGetNotifications, type NotificationItem } from "@/lib/notifications-client";
 
 function entryTitle(anime: NotificationItem["anime"]): string {
   return anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "";
@@ -38,8 +38,7 @@ export function NotificationBell() {
 
   async function load() {
     try {
-      const res = await fetch("/api/notifications");
-      const data = await res.json();
+      const data = await syncAndGetNotifications();
       setItems(data.items ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } catch {

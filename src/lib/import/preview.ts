@@ -1,9 +1,15 @@
 // Shared by both source-specific preview routes: hydrates resolved entries
-// with real title/cover art via the existing AnimeCache, and flags which
-// ones the current user already has tracked (so the UI can distinguish new
-// additions from updates before anything is written).
+// with real title/cover art, and flags which ones the current user already
+// has tracked (so the UI can distinguish new additions from updates before
+// anything is written).
+//
+// Stayed server-side deliberately (unlike Browse/Seasonal/etc.): this is a
+// one-time, explicit, user-initiated action, not routine browsing traffic —
+// same reasoning as resolve.ts's live fallback. Uses src/lib/anilist.ts,
+// which is a live, uncached pass-through (no server-side storage), not the
+// old AnimeCache-backed version this used to read from.
 import { prisma } from "@/lib/prisma";
-import { getCachedAnimeCardsByIds } from "@/lib/anime-cache";
+import { getAnimeCardsByIds } from "@/lib/anilist";
 import type { ResolvedEntry } from "./resolve";
 
 export type PreviewRow = {
@@ -19,7 +25,7 @@ export type PreviewRow = {
 export async function buildPreview(userId: string, resolved: ResolvedEntry[]) {
   const ids = resolved.map((e) => e.anilistId);
   const [media, existing, totalTracked] = await Promise.all([
-    getCachedAnimeCardsByIds(ids),
+    getAnimeCardsByIds(ids),
     prisma.animeListEntry.findMany({
       where: { userId, anilistId: { in: ids } },
       select: { anilistId: true },
