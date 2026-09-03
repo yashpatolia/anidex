@@ -434,7 +434,7 @@ export function ImportView() {
         <div className="flex flex-col gap-4 border-t border-line pt-6">
           <p className="text-sm text-paper">
             {result.queued > 0
-              ? `Syncing ${result.queued} ${result.queued === 1 ? "entry" : "entries"} to AniList. This can take a few minutes for a large import — check your list there once it's done.`
+              ? `Syncing ${result.queued} ${result.queued === 1 ? "entry" : "entries"} to AniList. This can take a few minutes for a large import, check your list there once it's done.`
               : "Nothing new to sync."}
             {result.skipped > 0 ? ` ${result.skipped} left as-is.` : ""}
           </p>

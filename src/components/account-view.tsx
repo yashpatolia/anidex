@@ -207,7 +207,7 @@ export function AccountView({
         <div className="flex flex-col gap-2">
           <p className="text-sm text-ash">
             Permanently delete your AniDex account (profile, follows, notifications). Your
-            AniList list itself is untouched — this doesn&apos;t sign you out of AniList or
+            AniList list itself is untouched. This doesn&apos;t sign you out of AniList or
             change anything there. This can&apos;t be undone.
           </p>
           <button
