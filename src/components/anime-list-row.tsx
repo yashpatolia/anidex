@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { AnilistMedia } from "@/lib/anilist";
+import type { AnilistMedia } from "@/lib/anilist-client";
 
 // Row layout for Profile's "List" view mode: one line per entry instead of
 // a card grid, trading cover size for scanability across a big list.
