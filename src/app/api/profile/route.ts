@@ -48,6 +48,12 @@ export async function PATCH(req: NextRequest) {
   // entries. AniList is the only place list data lives now (see
   // anilist-client.ts's file comment), so "owned" means "on the user's
   // real AniList list", checked with a live fetch here.
+  //
+  // A genuinely-unowned id and a check that couldn't even run (AniList
+  // down, a transient network error) must not look the same: silently
+  // dropping the pick on a real AniList failure would look to the user
+  // like their banner just vanished with no explanation, instead of a
+  // save that failed and can be retried.
   let cleanedPrefs = profilePrefs;
   if (profilePrefs) {
     const candidateIds = [
@@ -57,8 +63,15 @@ export async function PATCH(req: NextRequest) {
     let owned = new Set<number>();
     if (candidateIds.length) {
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-      const current = user?.name ? await getAnilistUserList(user.name) : [];
-      owned = new Set(current.map((e) => e.anilistId));
+      try {
+        const current = user?.name ? await getAnilistUserList(user.name) : [];
+        owned = new Set(current.map((e) => e.anilistId));
+      } catch {
+        return NextResponse.json(
+          { error: "Couldn't verify your AniList list right now. Try saving again." },
+          { status: 502 },
+        );
+      }
     }
     cleanedPrefs = {
       ...profilePrefs,

@@ -66,6 +66,7 @@ export function ProfilePageView({
   const displayBio = bio ?? "";
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortMode, setSortMode] = useState<SortMode>("titleAsc");
@@ -119,14 +120,22 @@ export function ProfilePageView({
 
   async function save() {
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profilePrefs: prefs }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setSaveError(data?.error ?? "Something went wrong. Try again.");
+        return;
+      }
       setEditing(false);
       router.refresh();
+    } catch {
+      setSaveError("Something went wrong. Try again.");
     } finally {
       setSaving(false);
     }
@@ -205,6 +214,7 @@ export function ProfilePageView({
           setPrefs={setPrefs}
           entries={entries}
           saving={saving}
+          saveError={saveError}
           onSave={save}
         />
       )}

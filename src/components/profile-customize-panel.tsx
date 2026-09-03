@@ -119,6 +119,7 @@ export function ProfileCustomizePanel({
   setPrefs,
   entries,
   saving,
+  saveError,
   onSave,
 }: {
   username: string;
@@ -126,6 +127,7 @@ export function ProfileCustomizePanel({
   setPrefs: (prefs: ProfilePrefs) => void;
   entries: Entry[];
   saving: boolean;
+  saveError: string | null;
   onSave: () => void;
 }) {
   const [favoriteSearch, setFavoriteSearch] = useState("");
@@ -328,14 +330,17 @@ export function ProfileCustomizePanel({
         </Section>
       </div>
 
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={saving}
-        className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        {saveError && <span className="font-mono text-xs text-hanko">{saveError}</span>}
+      </div>
     </div>
   );
 }

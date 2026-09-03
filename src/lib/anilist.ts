@@ -132,6 +132,16 @@ function sleep(ms: number) {
 // generic anilistFetch wrapper below is the only place fixing a type parameter
 // into that cached function for every call site. anilistFetch (the public,
 // generic wrapper) does the cast back to T.
+// No timeout on a plain fetch() ever cuts a slow/hanging request short on
+// its own — seen live in production as PATCH /api/profile (which calls
+// this) "taking a long time" when saving a banner/favorite pick, plausibly
+// whatever's making requests from this server's own IP slower than a
+// visitor's browser calling AniList directly (see the file-not-JSON note
+// below for the same asymmetry). Bounding it means a bad request fails
+// fast instead of leaving the caller (and the user watching a spinner)
+// hanging.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 async function anilistFetchWithRetry(
   query: string,
   variables: Record<string, unknown>,
@@ -141,6 +151,7 @@ async function anilistFetchWithRetry(
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (res.status === 429 && attempt <= 3) {
@@ -150,7 +161,21 @@ async function anilistFetchWithRetry(
     return anilistFetchWithRetry(query, variables, attempt + 1);
   }
 
-  const json = await res.json();
+  // Not always a JSON body: an outage/edge block in front of AniList
+  // (Cloudflare, a proxy) can respond with an HTML error page instead —
+  // seen live in production (a raw, uncaught "Unexpected token '<'"
+  // SyntaxError crashing the whole request). Requests from this server's
+  // own IP seem more likely to hit this than a visitor's browser calling
+  // AniList directly (anilist-client.ts) — plausibly a WAF rule treating
+  // datacenter/VPS IPs differently — so this module needs the guard even
+  // though the client one hasn't needed it yet.
+  const text = await res.text();
+  let json: { data?: unknown; errors?: { message?: string }[] };
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new AnilistError(`AniList returned a non-JSON response (${res.status})`, res.status);
+  }
 
   if (!res.ok || json.errors) {
     const message = json.errors?.[0]?.message ?? `AniList request failed (${res.status})`;
