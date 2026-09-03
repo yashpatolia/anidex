@@ -18,7 +18,6 @@ export default async function AccountPage() {
       bio: true,
       email: true,
       username: true,
-      usernameAutoAssigned: true,
       name: true,
       image: true,
       avatarImage: true,
@@ -32,7 +31,6 @@ export default async function AccountPage() {
       bio={user.bio}
       email={user.email}
       username={user.username}
-      usernameAutoAssigned={user.usernameAutoAssigned}
       // AniList's Viewer.name (their AniList username) is stored as our
       // User.name on sign-in — see the profile() mapping in auth.ts.
       anilistUsername={user.accounts.length > 0 ? user.name : null}

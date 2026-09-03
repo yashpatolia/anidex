@@ -22,17 +22,13 @@ model User {
   // Only set for credentials (email/password) accounts. Null for OAuth-only users.
   passwordHash  String?
 
-  // Public handle, >=4 chars, [a-z0-9_] (see src/lib/username.ts). Nullable
-  // only because this column was added after some users already existed —
-  // every row is backfilled with a generated one (see
-  // prisma/backfill-usernames.ts), so application code can treat it as
-  // always present. New signups (credentials or OAuth) always get one
-  // immediately, so it never goes null again after the one-time backfill.
-  username             String?  @unique
-  // True until the user changes it away from what was auto-generated
-  // (backfill, or a new Google sign-up) — drives the one-time "pick your
-  // own" nudge on Account settings.
-  usernameAutoAssigned Boolean  @default(false)
+  // Public handle, >=4 chars, [a-z0-9_] (see src/lib/username.ts). Always
+  // set directly from the AniList username at sign-up (see auth.ts's
+  // createUser event) and never user-editable — AniList is the identity
+  // source, so there's nothing to pick or rename here. Nullable only so the
+  // type is honest about a row that somehow lost this (there's no such path
+  // in practice with AniList as the sole provider).
+  username String? @unique
 
   // Profile customization.
   bio          String?

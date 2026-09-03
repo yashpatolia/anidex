@@ -1,27 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { isValidUsername } from "@/lib/username";
 import { AvatarUpload } from "@/components/avatar-upload";
-
-// Minimal external store so useSyncExternalStore can pick up our own
-// same-tab localStorage writes — the native "storage" event only fires in
-// *other* tabs, never the one that made the change.
-const nudgeListeners = new Set<() => void>();
-function subscribeToNudgeDismissal(listener: () => void) {
-  nudgeListeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    nudgeListeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-function notifyNudgeDismissed() {
-  for (const listener of nudgeListeners) listener();
-}
 
 function fieldClass() {
   return "border border-line bg-ink px-3 py-2 text-sm text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none";
@@ -35,7 +18,6 @@ export function AccountView({
   bio,
   email,
   username,
-  usernameAutoAssigned,
   anilistUsername,
   avatarSrc,
   hasCustomAvatar,
@@ -43,7 +25,6 @@ export function AccountView({
   bio: string | null;
   email: string | null;
   username: string | null;
-  usernameAutoAssigned: boolean;
   // The AniList account this AniDex account is linked to — AniList is the
   // only sign-in method, so unlike the old multi-provider setup this is
   // never absent for a real session, but stays nullable for the type to be
@@ -54,48 +35,14 @@ export function AccountView({
 }) {
   const router = useRouter();
 
-  // Bio / username
+  // Bio — username isn't editable here (see the Username field below), so
+  // there's nothing to track for it beyond the initial value already passed
+  // in.
   const initialUsername = username ?? "";
   const [displayBio, setDisplayBio] = useState(bio ?? "");
-  const [displayUsername, setDisplayUsername] = useState(initialUsername);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
-
-  // Dismissing the auto-assigned-username nudge only ever lived in
-  // component state, so it reset on every page load — persist it in
-  // localStorage instead so "Dismiss" actually sticks. Keyed by email since
-  // that's already a stable, available identifier for this account.
-  //
-  // useSyncExternalStore (not useState+useEffect) because this reads an
-  // external, non-React value that differs between server and client:
-  // there's no localStorage during SSR, so the server snapshot is "hidden"
-  // by default, and the client snapshot corrects it right after hydration
-  // with no risk of a genuinely-dismissed nudge flashing back into view.
-  const nudgeStorageKey = email ? `anidex:username-nudge-dismissed:${email}` : null;
-  const nudgeDismissed = useSyncExternalStore(
-    subscribeToNudgeDismissal,
-    () => {
-      if (!nudgeStorageKey) return false;
-      try {
-        return localStorage.getItem(nudgeStorageKey) === "1";
-      } catch {
-        return false;
-      }
-    },
-    () => true,
-  );
-  function dismissNudge() {
-    if (nudgeStorageKey) {
-      try {
-        localStorage.setItem(nudgeStorageKey, "1");
-      } catch {
-        // Private browsing / storage disabled — dismissal just won't
-        // persist across reloads, not worth surfacing an error for.
-      }
-    }
-    notifyNudgeDismissed();
-  }
 
   // Delete account
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -105,21 +52,12 @@ export function AccountView({
     setProfileError(null);
     setProfileSaved(false);
 
-    const usernameChanged = displayUsername !== initialUsername;
-    if (usernameChanged && !isValidUsername(displayUsername)) {
-      setProfileError("Username must be 4-24 characters: lowercase letters, numbers, underscore.");
-      return;
-    }
-
     setProfileSaving(true);
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bio: displayBio,
-          ...(usernameChanged ? { username: displayUsername } : {}),
-        }),
+        body: JSON.stringify({ bio: displayBio }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -163,34 +101,11 @@ export function AccountView({
 
         <AvatarUpload username={initialUsername || "?"} initialSrc={avatarSrc} initialHasCustom={hasCustomAvatar} />
 
-        {usernameAutoAssigned && !nudgeDismissed && (
-          <div className="flex items-start justify-between gap-4 border border-line bg-line/20 px-4 py-3">
-            <p className="text-sm text-paper">
-              We picked <span className="font-mono">@{initialUsername}</span> for you. Feel free to
-              change it below.
-            </p>
-            <button
-              type="button"
-              onClick={dismissNudge}
-              className="flex-shrink-0 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:text-paper"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        <label className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className={labelClass()}>Username</span>
-          <input
-            value={displayUsername}
-            onChange={(e) => {
-              setDisplayUsername(e.target.value.toLowerCase());
-              setProfileSaved(false);
-            }}
-            maxLength={24}
-            className={`max-w-xs ${fieldClass()}`}
-          />
-        </label>
+          <p className="font-mono text-sm text-paper">@{initialUsername}</p>
+          <p className="text-xs text-ash">Set from your AniList username, not changeable here.</p>
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className={labelClass()}>Bio</span>

@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { USERNAME_PATTERN } from "@/lib/username";
 import { MAX_FAVORITES } from "@/lib/profile-prefs";
-import { Prisma } from "@/generated/prisma/client";
 
 const sectionSchema = z.object({
   key: z.enum(["WATCHING", "COMPLETED", "PLANNED", "PAUSED", "DROPPED"]),
@@ -28,7 +26,6 @@ const prefsSchema = z.object({
 
 const bodySchema = z.object({
   bio: z.string().trim().max(280).nullable().optional(),
-  username: z.string().regex(USERNAME_PATTERN, "4-24 characters: lowercase letters, numbers, underscore.").optional(),
   profilePrefs: prefsSchema.optional(),
 });
 
@@ -41,7 +38,7 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { username, profilePrefs, ...rest } = parsed.data;
+  const { profilePrefs, ...rest } = parsed.data;
 
   // A banner or favorite pointing at something not actually on the owner's
   // list would just be a broken picture (there'd be nothing to look up), so
@@ -73,26 +70,13 @@ export async function PATCH(req: NextRequest) {
     };
   }
 
-  try {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      // Explicitly setting a username (vs. the one auto-generated at
-      // signup/backfill) turns off the "pick your own" nudge for good.
-      data:
-        username != null
-          ? { ...rest, profilePrefs: cleanedPrefs, username, usernameAutoAssigned: false }
-          : { ...rest, profilePrefs: cleanedPrefs },
-    });
-    return NextResponse.json({
-      bio: user.bio,
-      username: user.username,
-      usernameAutoAssigned: user.usernameAutoAssigned,
-      profilePrefs: user.profilePrefs,
-    });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return NextResponse.json({ error: "That username is taken." }, { status: 409 });
-    }
-    throw e;
-  }
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { ...rest, profilePrefs: cleanedPrefs },
+  });
+  return NextResponse.json({
+    bio: user.bio,
+    username: user.username,
+    profilePrefs: user.profilePrefs,
+  });
 }

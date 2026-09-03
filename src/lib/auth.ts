@@ -139,18 +139,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     // Fires when the adapter creates a brand-new User row — i.e. every
     // first-time AniList sign-in, since that's the only provider now.
-    // Every account needs a username, and AniList's own username isn't
-    // guaranteed unique in our namespace (or even valid — see
-    // generateUniqueUsername's own char-set rules), so generate one from
-    // it; the user can rename it any time from Account settings
-    // (usernameAutoAssigned drives the nudge to do so there).
+    // AniDex's username is just the AniList username — not user-editable
+    // (see account-view.tsx) — but still run through
+    // generateUniqueUsername since AniList's own char-set/case isn't
+    // guaranteed to satisfy USERNAME_PATTERN or stay collision-free once
+    // sanitized (e.g. two differently-cased AniList names colliding after
+    // lowercasing).
     async createUser({ user }) {
       if (!user.id) return;
       const seed = user.name ?? "user";
       const username = await generateUniqueUsername(prisma, seed);
       await prisma.user.update({
         where: { id: user.id },
-        data: { username, usernameAutoAssigned: true },
+        data: { username },
       });
     },
     // isNewUser is only true on the sign-in that triggered createUser
