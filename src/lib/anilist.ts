@@ -1,12 +1,21 @@
-// Thin client for the public AniList GraphQL API (https://docs.anilist.co/).
-// No API key needed for reads. Responses are cached server-side via
-// unstable_cache (see anilistFetch below) to stay well under AniList's rate
-// limit — deliberately not relying on Next's automatic fetch Data Cache,
-// which reliably auto-caches GET requests but not POST, and AniList's API
-// requires POST.
-
-import { unstable_cache } from "next/cache";
-
+// Server-side client for the public AniList GraphQL API
+// (https://docs.anilist.co/). Used to front every browsing page in the
+// app; now narrowed to the few legitimate server-only cases that remain
+// (generateMetadata() for OG/Twitter tags on crawled pages, and the
+// import feature's title-resolution fallback) — everywhere else moved to
+// src/lib/anilist-client.ts, called from the browser directly. See that
+// file's comment for why: AniList's rate limit concentrates per
+// requesting IP (confirmed with their devs), so routing all of AniDex's
+// traffic through one server IP meant the whole userbase shared one
+// budget, and per their devs, server-side storage of their data counts as
+// hoarding under the ToS regardless of rate limits.
+//
+// No caching of any kind here anymore — this used to wrap every call in
+// unstable_cache (Next's server-side data cache), which is exactly the
+// kind of server-side persistence that's no longer allowed. Every call
+// through this module is now a live, uncached, use-once-and-discard
+// request, same as anilist-client.ts's browser calls just made from the
+// server for the narrow cases that still need to be.
 const ANILIST_URL = "https://graphql.anilist.co";
 
 export type AnilistMedia = {
@@ -152,20 +161,8 @@ async function anilistFetchWithRetry(
   return json.data;
 }
 
-// unstable_cache caches by the arguments passed to the returned function,
-// server-side, regardless of HTTP method — this is what actually keeps
-// repeat identical queries (same trending page, same browse filters, same
-// season) from re-hitting AniList on every page load. A thrown error is
-// never cached, so a failed/rate-limited call doesn't poison the cache for
-// the next request.
-const cachedAnilistFetch = unstable_cache(
-  (query: string, variables: Record<string, unknown>) => anilistFetchWithRetry(query, variables),
-  ["anilist-graphql"],
-  { revalidate: 3600 },
-);
-
 async function anilistFetch<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  return (await cachedAnilistFetch(query, variables)) as T;
+  return (await anilistFetchWithRetry(query, variables)) as T;
 }
 
 export async function searchAnime(search: string, page = 1, perPage = 20) {

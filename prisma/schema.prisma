@@ -121,25 +121,6 @@ model AnimeCache {
   updatedAt DateTime @updatedAt
 }
 
-// A lightweight, locally-searchable mirror of AniList's title catalog: just
-// enough (id, titles, popularity) to do real substring search ourselves.
-// AniList's own `search` field is a fuzzy/similarity search that silently
-// returns nothing for short fragments (e.g. "toni" finds nothing, "tonika"
-// does) — there's no way to fix that from our side of their API, so we
-// search this table instead and hydrate the matches via AnimeCache/AniList
-// for actual display. Populated by scripts/sync-anime-titles.ts.
-model AnimeTitle {
-  anilistId  Int     @id
-  romaji     String?
-  english    String?
-  native     String?
-  popularity Int     @default(0)
-  updatedAt  DateTime @updatedAt
-
-  @@index([romaji])
-  @@index([english])
-}
-
 // A user's entry for one anime. Anime metadata itself (title, cover art,
 // episode count, etc.) is NOT stored here — see AnimeCache above.
 model AnimeListEntry {

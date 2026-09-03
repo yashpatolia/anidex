@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { searchAnime } from "@/lib/anilist-client";
 
 type AnimeResult = { id: number; title: string; coverImage: string | null; genres: string[] };
 type UserResult = { username: string; bio: string | null };
@@ -36,9 +37,21 @@ export function NavSearch() {
 
     const id = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search/quick?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        setResults(data.results ?? []);
+        // Straight to AniList's own search field from the browser now —
+        // no local title index anymore (that was itself a server-side
+        // store of AniList data). Real quality tradeoff: AniList's search
+        // is fuzzy/similarity-based and returns nothing for short
+        // fragments (e.g. "toni" finds nothing, "tonika" does), unlike
+        // the old local substring index.
+        const { media } = await searchAnime(q, 1, 5);
+        setResults(
+          media.map((m) => ({
+            id: m.id,
+            title: m.title.english ?? m.title.romaji ?? m.title.native ?? "Untitled",
+            coverImage: m.coverImage.large,
+            genres: m.genres.slice(0, 3),
+          })),
+        );
       } catch {
         setResults([]);
       }
