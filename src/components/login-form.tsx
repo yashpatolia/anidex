@@ -32,7 +32,7 @@ export function LoginForm() {
         <p className="font-mono text-xs uppercase tracking-widest text-ash">Sign in</p>
         <h1 className="font-display text-3xl text-paper">Welcome back.</h1>
         <p className="text-sm text-ash">
-          AniDex is an AniList client — sign in with your AniList account and your list stays
+          AniDex is an AniList client. Sign in with your AniList account and your list stays
           in sync both ways.
         </p>
       </div>
