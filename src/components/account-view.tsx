@@ -48,6 +48,12 @@ export function AccountView({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Clear list (AniList side only — see deleteAccount's own comment for
+  // the distinction)
+  const [confirmingClearList, setConfirmingClearList] = useState(false);
+  const [clearingList, setClearingList] = useState(false);
+  const [clearListError, setClearListError] = useState<string | null>(null);
+
   async function saveProfile() {
     setProfileError(null);
     setProfileSaved(false);
@@ -84,6 +90,25 @@ export function AccountView({
     } catch {
       setDeleting(false);
       setConfirmingDelete(false);
+    }
+  }
+
+  async function clearList() {
+    setClearingList(true);
+    setClearListError(null);
+    try {
+      const res = await fetch("/api/list/clear", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setClearListError(data?.error ?? "Something went wrong.");
+        return;
+      }
+      setConfirmingClearList(false);
+      router.refresh();
+    } catch {
+      setClearListError("Something went wrong.");
+    } finally {
+      setClearingList(false);
     }
   }
 
@@ -161,21 +186,81 @@ export function AccountView({
         </p>
       </section>
 
-      {/* Delete account */}
-      <section className="flex flex-col gap-3 border-t border-line pt-8">
+      {/* Delete list / delete account */}
+      <section className="flex flex-col gap-5 border-t border-line pt-8">
         <h2 className="font-display text-lg text-paper">Danger zone</h2>
-        <p className="text-sm text-ash">
-          Permanently delete your account and everything tracked on your list.
-          This can&apos;t be undone.
-        </p>
-        <button
-          type="button"
-          onClick={() => setConfirmingDelete(true)}
-          className="self-start border border-line px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-colors hover:border-hanko hover:text-hanko"
-        >
-          Delete account
-        </button>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-ash">
+            Remove every anime from your real AniList list. Your AniDex account (profile,
+            username, follows) stays as-is. This can&apos;t be undone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirmingClearList(true)}
+            className="self-start border border-line px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-colors hover:border-hanko hover:text-hanko"
+          >
+            Delete list
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-ash">
+            Permanently delete your AniDex account (profile, follows, notifications). Your
+            AniList list itself is untouched — this doesn&apos;t sign you out of AniList or
+            change anything there. This can&apos;t be undone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="self-start border border-line px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-colors hover:border-hanko hover:text-hanko"
+          >
+            Delete account
+          </button>
+        </div>
       </section>
+
+      {confirmingClearList && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 px-6"
+          onClick={() => !clearingList && setConfirmingClearList(false)}
+        >
+          <div
+            className="flex w-full max-w-sm flex-col gap-5 border border-hanko bg-ink p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-xs uppercase tracking-widest text-hanko">
+                This can&apos;t be undone
+              </p>
+              <p className="text-sm text-paper">
+                Remove every anime from your AniList list? Your AniDex account stays.
+              </p>
+              {clearListError && <p className="font-mono text-xs text-hanko">{clearListError}</p>}
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmingClearList(false)}
+                disabled={clearingList}
+                className="border border-line px-4 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-colors hover:border-ash disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearList}
+                disabled={clearingList}
+                className="border border-hanko bg-hanko px-4 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
+              >
+                {clearingList ? "Deleting…" : "Delete list"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmingDelete && (
         <div
@@ -193,7 +278,7 @@ export function AccountView({
                 This can&apos;t be undone
               </p>
               <p className="text-sm text-paper">
-                Permanently delete your account and every anime on your list?
+                Permanently delete your AniDex account? Your AniList list is untouched.
                 You&apos;ll be signed out immediately.
               </p>
             </div>
