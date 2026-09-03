@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { SEASONS } from "@/lib/anilist";
+import { SEASONS } from "@/lib/anilist-client";
 import { FilterSelect } from "@/components/filter-select";
 
 const CURRENT_YEAR = new Date().getFullYear();

@@ -24,6 +24,15 @@
 // Query field shapes and function signatures deliberately mirror
 // anilist.ts's — this is the same API, just called from a different
 // place, not a redesign.
+//
+// SEASONS/getCurrentSeason/BROWSE_* moved out to anilist-shared.ts and are
+// just re-exported here for convenience — a Server Component can't call a
+// function exported from a "use client" module directly (Next.js enforces
+// that boundary even for plain, non-JSX function calls), and
+// seasonal/page.tsx needs getCurrentSeason() before it ever renders
+// anything client-side.
+export { SEASONS, getCurrentSeason, BROWSE_GENRES, BROWSE_FORMATS, BROWSE_STATUSES, BROWSE_SORTS } from "@/lib/anilist-shared";
+
 const ANILIST_URL = "https://graphql.anilist.co";
 
 export type AnilistMedia = {
@@ -250,24 +259,6 @@ export function getAnimeCardsByIds(ids: number[]): Promise<AnilistMedia[]> {
   return getMediaByIds<AnilistMedia>(ids, MEDIA_FIELDS, 10);
 }
 
-export const SEASONS = [
-  { value: "WINTER", label: "Winter" },
-  { value: "SPRING", label: "Spring" },
-  { value: "SUMMER", label: "Summer" },
-  { value: "FALL", label: "Fall" },
-] as const;
-
-export function getCurrentSeason(): { season: string; year: number } {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  if (month === 12) return { season: "WINTER", year: year + 1 };
-  if (month <= 2) return { season: "WINTER", year };
-  if (month <= 5) return { season: "SPRING", year };
-  if (month <= 8) return { season: "SUMMER", year };
-  return { season: "FALL", year };
-}
-
 export async function getSeasonalAnime(season: string, year: number, page = 1, perPage = 50) {
   const query = `
     query ($page: Int, $perPage: Int, $season: MediaSeason, $year: Int) {
@@ -356,37 +347,6 @@ export type BrowseFilters = {
   page?: number;
   perPage?: number;
 };
-
-export const BROWSE_GENRES = [
-  "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror",
-  "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance",
-  "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller",
-] as const;
-
-export const BROWSE_FORMATS = [
-  { value: "TV", label: "TV" },
-  { value: "TV_SHORT", label: "TV Short" },
-  { value: "MOVIE", label: "Movie" },
-  { value: "SPECIAL", label: "Special" },
-  { value: "OVA", label: "OVA" },
-  { value: "ONA", label: "ONA" },
-  { value: "MUSIC", label: "Music" },
-] as const;
-
-export const BROWSE_STATUSES = [
-  { value: "RELEASING", label: "Airing" },
-  { value: "FINISHED", label: "Finished" },
-  { value: "NOT_YET_RELEASED", label: "Upcoming" },
-  { value: "CANCELLED", label: "Cancelled" },
-  { value: "HIATUS", label: "Hiatus" },
-] as const;
-
-export const BROWSE_SORTS = [
-  { value: "POPULARITY_DESC", label: "Popularity" },
-  { value: "SCORE_DESC", label: "Score" },
-  { value: "TRENDING_DESC", label: "Trending" },
-  { value: "START_DATE_DESC", label: "Newest" },
-] as const;
 
 export async function browseAnime(filters: BrowseFilters) {
   const {

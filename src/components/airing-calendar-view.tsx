@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { QuickAddButton } from "@/components/quick-add-button";
-import type { AnilistMedia } from "@/lib/anilist";
+import type { AnilistMedia } from "@/lib/anilist-client";
 
 // Row height is fixed by the h-14 cover (56px) — that dominates the row's
 // height regardless of title/subtitle text, which never wraps to more than
