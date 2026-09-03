@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { getCachedAnimeByIds } from "@/lib/anime-cache";
 import { syncListEntryToAnilist } from "@/lib/anilist-sync";
 import { WatchStatus } from "@/generated/prisma/client";
 
@@ -14,28 +13,11 @@ const upsertSchema = z.object({
   notes: z.string().max(2000).nullable().optional(),
 });
 
-// GET /api/list?status=WATCHING — current user's list, merged with live AniList metadata.
-export async function GET(req: NextRequest) {
-  const userId = await requireUserId();
-  if (userId instanceof NextResponse) return userId;
-
-  const status = new URL(req.url).searchParams.get("status");
-  const parsedStatus = status && status in WatchStatus ? (status as WatchStatus) : undefined;
-
-  const entries = await prisma.animeListEntry.findMany({
-    where: { userId, ...(parsedStatus ? { status: parsedStatus } : {}) },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  const media = await getCachedAnimeByIds(entries.map((e) => e.anilistId));
-  const mediaById = new Map(media.map((m) => [m.id, m]));
-
-  return NextResponse.json(
-    entries.map((entry) => ({ ...entry, anime: mediaById.get(entry.anilistId) ?? null })),
-  );
-}
-
 // POST /api/list — add or update the current user's entry for an anime.
+// (The old GET here — the user's list merged with hydrated AniList data —
+// is gone: nothing calls it anymore now that Profile/list pages fetch
+// their own raw entries server-side and hydrate AniList data client-side
+// themselves; see profile-data-view.tsx.)
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
   if (userId instanceof NextResponse) return userId;

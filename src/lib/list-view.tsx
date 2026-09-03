@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { AnilistMedia } from "@/lib/anilist";
+import type { AnilistMedia } from "@/lib/anilist-client";
 
 // Used by ProfilePageView (src/components/profile-page-view.tsx), the one
 // page rendered at both /profile (redirects here for the signed-in user)
