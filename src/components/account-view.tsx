@@ -235,9 +235,20 @@ export function AccountView({
               <p className="font-mono text-xs uppercase tracking-widest text-hanko">
                 This can&apos;t be undone
               </p>
-              <p className="text-sm text-paper">
-                Remove every anime from your AniList list? Your AniDex account stays.
-              </p>
+              {clearingList ? (
+                <p className="flex items-center gap-2 text-sm text-paper">
+                  <span
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-paper/30 border-t-paper"
+                  />
+                  Deleting your list. This can take a moment for a large one, stay on this page
+                  until it&apos;s done.
+                </p>
+              ) : (
+                <p className="text-sm text-paper">
+                  Remove every anime from your AniList list? Your AniDex account stays.
+                </p>
+              )}
               {clearListError && <p className="font-mono text-xs text-hanko">{clearListError}</p>}
             </div>
             <div className="flex justify-end gap-3">
