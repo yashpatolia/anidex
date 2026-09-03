@@ -1,15 +1,18 @@
 // Shared by both source-specific preview routes: hydrates resolved entries
 // with real title/cover art, and flags which ones the current user already
-// has tracked (so the UI can distinguish new additions from updates before
-// anything is written).
+// has tracked on AniList (so the UI can distinguish new additions from
+// updates before anything is written).
 //
 // Stayed server-side deliberately (unlike Browse/Seasonal/etc.): this is a
 // one-time, explicit, user-initiated action, not routine browsing traffic —
 // same reasoning as resolve.ts's live fallback. Uses src/lib/anilist.ts,
 // which is a live, uncached pass-through (no server-side storage), not the
-// old AnimeCache-backed version this used to read from.
+// old AnimeCache-backed version this used to read from. "Already tracked"
+// now means already on the user's real AniList list (getAnilistUserList)
+// rather than our own AnimeListEntry table — that table's gone; AniList is
+// the only copy of list data now (see anilist-client.ts's file comment).
 import { prisma } from "@/lib/prisma";
-import { getAnimeCardsByIds } from "@/lib/anilist";
+import { getAnimeCardsByIds, getAnilistUserList } from "@/lib/anilist";
 import type { ResolvedEntry } from "./resolve";
 
 export type PreviewRow = {
@@ -24,17 +27,16 @@ export type PreviewRow = {
 
 export async function buildPreview(userId: string, resolved: ResolvedEntry[]) {
   const ids = resolved.map((e) => e.anilistId);
-  const [media, existing, totalTracked] = await Promise.all([
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+
+  const [media, current] = await Promise.all([
     getAnimeCardsByIds(ids),
-    prisma.animeListEntry.findMany({
-      where: { userId, anilistId: { in: ids } },
-      select: { anilistId: true },
-    }),
-    prisma.animeListEntry.count({ where: { userId } }),
+    user?.name ? getAnilistUserList(user.name) : Promise.resolve([]),
   ]);
 
   const mediaById = new Map(media.map((m) => [m.id, m]));
-  const trackedIds = new Set(existing.map((e) => e.anilistId));
+  const trackedIds = new Set(current.map((e) => e.anilistId));
+  const totalTracked = current.length;
 
   const rows: PreviewRow[] = resolved.map((e) => {
     const m = mediaById.get(e.anilistId);

@@ -19,8 +19,6 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  // Only set for credentials (email/password) accounts. Null for OAuth-only users.
-  passwordHash  String?
 
   // Public handle, >=4 chars, [a-z0-9_] (see src/lib/username.ts). Always
   // set directly from the AniList username at sign-up (see auth.ts's
@@ -48,7 +46,6 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
-  listEntries   AnimeListEntry[]
   notifications Notification[]
   // Rows where this user is the one doing the following / being followed.
   // See Follow below for why these are two separate relations on one model.
@@ -97,42 +94,16 @@ model VerificationToken {
 
 // --- App models ---
 
-enum WatchStatus {
-  WATCHING
-  COMPLETED
-  PLANNED
-  DROPPED
-  PAUSED
-  REWATCHING
-}
-
-// Read-through cache of AniList metadata, keyed by their media id. Populated
-// lazily: the first request for a given anime fetches from AniList and stores
-// it here; every later request (from any user) is served from this table
-// until it goes stale. See src/lib/anime-cache.ts.
-// A user's entry for one anime. Anime metadata itself (title, cover art,
-// episode count, etc.) is never stored server-side at all anymore — every
-// page that needs it fetches AniList live, from the browser, per request.
-// See src/lib/anilist-client.ts's file comment: this app used to have an
-// AnimeCache table here doing exactly that server-side, which AniList's
-// own developers confirmed counts as "hoarding" under their ToS.
-model AnimeListEntry {
-  id        String      @id @default(cuid())
-  userId    String
-  anilistId Int
-  status    WatchStatus @default(PLANNED)
-  score     Int? // 1-10, null = unscored
-  progress  Int         @default(0) // episodes watched
-  notes     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, anilistId])
-  @@index([userId, status])
-}
+// No AnimeListEntry model, and no WatchStatus enum here — AniList is the
+// only place list data (status/score/progress) lives now, and anime
+// metadata (title, cover art, episode count, etc.) is never stored
+// server-side either; every page that needs either fetches AniList live,
+// from the browser, per request. See src/lib/anilist-client.ts's file
+// comment: this app used to have an AnimeCache table (anime metadata) and
+// an AnimeListEntry table (list data) doing exactly that server-side,
+// which AniList's own developers confirmed counts as "hoarding" under
+// their ToS. src/lib/anilist-shared.ts's WatchStatus is the TS-only
+// equivalent of the enum this used to be, decoupled from any table now.
 
 // Generated lazily, not by a scheduled job (this app doesn't have a task
 // scheduler yet — see ROADMAP.md's separate "Scheduled jobs" line): when a

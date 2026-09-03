@@ -232,7 +232,7 @@ export function ProfileCustomizePanel({
               const checked = prefs.favoriteIds.includes(e.anime.id);
               const disabled = !checked && prefs.favoriteIds.length >= MAX_FAVORITES;
               return (
-                <Checkbox key={e.id} checked={checked} disabled={disabled} onChange={() => toggleFavorite(e.anime.id)}>
+                <Checkbox key={e.anime.id} checked={checked} disabled={disabled} onChange={() => toggleFavorite(e.anime.id)}>
                   <span className="normal-case tracking-normal">{entryTitle(e)}</span>
                 </Checkbox>
               );

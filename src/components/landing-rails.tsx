@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getLandingRails, type AnilistMedia } from "@/lib/anilist-client";
 import { getRecommendationRails, type RecommendationRail } from "@/lib/recommendations-client";
 import { useTrackedIds } from "@/lib/use-tracked-ids";
@@ -16,6 +17,8 @@ import { HeroGallery } from "@/components/hero-gallery";
 // way that's more convoluted than just rendering the session-derived hero
 // copy here too, passed down as the one boolean it actually depends on.
 export function LandingRails({ signedIn }: { signedIn: boolean }) {
+  const { data: session } = useSession();
+  const anilistUsername = session?.user?.name ?? null;
   const trackedIds = useTrackedIds();
   const [rails, setRails] = useState<{ trending: AnilistMedia[]; popular: AnilistMedia[]; topRated: AnilistMedia[] } | null>(
     null,
@@ -31,15 +34,15 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
     // visitors browsing the public trending/popular rails, so this stays a
     // light, single-row taste of what /recommendations has more of, not a
     // second dedicated page's worth.
-    if (signedIn) {
-      getRecommendationRails(1, 18).then((r) => {
+    if (signedIn && anilistUsername) {
+      getRecommendationRails(anilistUsername, 1, 18).then((r) => {
         if (!cancelled) setRecommended(r);
       });
     }
     return () => {
       cancelled = true;
     };
-  }, [signedIn]);
+  }, [signedIn, anilistUsername]);
 
   const galleryItems = (rails?.trending ?? [])
     .slice(0, 5)
@@ -60,8 +63,8 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
           </h1>
           <p className="max-w-md text-base leading-relaxed text-ash">
             Search anime, track what you&apos;re watching, and rate what you&apos;ve
-            finished. Your list lives in a database you own, not someone else&apos;s
-            platform.
+            finished. Sign in with AniList and every change here stays in sync with
+            your real AniList list, both ways.
           </p>
           <div className="flex items-center gap-4 pt-2">
             <Link

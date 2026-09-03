@@ -11,7 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { notFound } from "next/navigation";
-import { getAnimeById, type AnilistMediaDetail } from "@/lib/anilist-client";
+import { getAnimeById, getUserMediaListEntry, type AnilistMediaDetail } from "@/lib/anilist-client";
 import { AddToListControl } from "@/components/add-to-list-control";
 import { ShareButton } from "@/components/share-button";
 import { ScrollRail } from "@/components/scroll-rail";
@@ -79,18 +79,17 @@ export function AnimeDetailView({ anilistId }: { anilistId: number }) {
   }, [anilistId]);
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated") return;
+    if (sessionStatus !== "authenticated" || !session?.user?.name) return;
     let cancelled = false;
-    fetch(`/api/list/${anilistId}`)
-      .then((res) => res.json())
-      .then((data: { entry: Entry | null }) => {
-        if (!cancelled) setEntry(data.entry);
+    getUserMediaListEntry(anilistId, session.user.name)
+      .then((e) => {
+        if (!cancelled) setEntry(e);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [anilistId, sessionStatus]);
+  }, [anilistId, sessionStatus, session?.user?.name]);
 
   if (error) notFound();
   if (anime === undefined) return <PageLoading />;

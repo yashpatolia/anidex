@@ -2,22 +2,26 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getRecommendationRails, type RecommendationRail } from "@/lib/recommendations-client";
 import { AnimeRail } from "@/components/anime-rail";
 import { PageLoading } from "@/components/page-loading";
 
 export function RecommendationsView() {
+  const { data: session } = useSession();
+  const anilistUsername = session?.user?.name ?? null;
   const [rails, setRails] = useState<RecommendationRail[] | null>(null);
 
   useEffect(() => {
+    if (!anilistUsername) return;
     let cancelled = false;
-    getRecommendationRails(8, 18).then((r) => {
+    getRecommendationRails(anilistUsername, 8, 18).then((r) => {
       if (!cancelled) setRails(r);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [anilistUsername]);
 
   if (!rails) return <PageLoading />;
 

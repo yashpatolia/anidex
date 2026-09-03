@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { syncAndGetNotifications, type NotificationItem } from "@/lib/notifications-client";
 
@@ -21,6 +22,8 @@ function timeAgo(iso: string): string {
 }
 
 export function NotificationBell() {
+  const { data: session } = useSession();
+  const anilistUsername = session?.user?.name ?? null;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -37,8 +40,9 @@ export function NotificationBell() {
   }, []);
 
   async function load() {
+    if (!anilistUsername) return;
     try {
-      const data = await syncAndGetNotifications();
+      const data = await syncAndGetNotifications(anilistUsername);
       setItems(data.items ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } catch {

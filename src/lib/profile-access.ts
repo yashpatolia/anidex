@@ -13,6 +13,11 @@ import { normalizePrefs, type ProfilePrefs } from "@/lib/profile-prefs";
 export type ProfileAccess = {
   id: string;
   username: string;
+  // The AniList account this profile's list actually reads from (User.name
+  // — see auth.ts's profile() mapping). Not necessarily identical to
+  // `username` above (that's sanitized/deduped for our own URL charset).
+  // Null only for a row that somehow lost its AniList Account link.
+  anilistUsername: string | null;
   bio: string | null;
   // Resolved display picture: the user's own upload if they have one,
   // else the OAuth-provided picture, else null (Avatar renders a
@@ -28,7 +33,16 @@ export async function resolveProfileAccess(
 ): Promise<ProfileAccess | null> {
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, bio: true, image: true, avatarImage: true, profilePrefs: true },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      bio: true,
+      image: true,
+      avatarImage: true,
+      profilePrefs: true,
+      accounts: { where: { provider: "anilist" }, select: { provider: true } },
+    },
   });
   if (!user) return null;
   const prefs = normalizePrefs(user.profilePrefs);
@@ -37,6 +51,7 @@ export async function resolveProfileAccess(
   return {
     id: user.id,
     username: user.username!,
+    anilistUsername: user.accounts.length > 0 ? user.name : null,
     bio: user.bio,
     avatarSrc: user.avatarImage ?? user.image,
     prefs,

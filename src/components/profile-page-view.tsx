@@ -184,7 +184,7 @@ export function ProfilePageView({
           <div className="flex gap-3 overflow-x-auto pb-1">
             {favoriteEntries.map((entry) => (
               <Link
-                key={entry.id}
+                key={entry.anime.id}
                 href={`/anime/${entry.anime.id}`}
                 title={entryTitle(entry)}
                 className="relative h-24 w-16 flex-shrink-0 overflow-hidden border border-line transition-opacity hover:opacity-80"
@@ -307,7 +307,7 @@ export function ProfilePageView({
                   <div className="flex flex-col border-t border-line">
                     {section.map((entry) => (
                       <AnimeListRow
-                        key={entry.id}
+                        key={entry.anime.id}
                         anime={entry.anime}
                         score={entry.score}
                         progress={entry.progress}
@@ -318,7 +318,7 @@ export function ProfilePageView({
                   <div className={viewMode === "compact" ? COMPACT_COLS : GRID_COLS}>
                     {section.map((entry) => (
                       <AnimeCard
-                        key={entry.id}
+                        key={entry.anime.id}
                         anime={entry.anime}
                         initialTracked={isOwner || viewerTrackedIds.has(entry.anime.id)}
                         score={entry.score}

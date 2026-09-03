@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { getAnimeCardsByIds } from "@/lib/anilist";
+import { getAnimeCardsByIds, getAnilistUserList } from "@/lib/anilist";
+import { ANILIST_STATUS_TO_OURS } from "@/lib/anilist-shared";
 
-// GET /api/export?format=json|csv — download the signed-in user's own list.
-// Read-only, scoped to userId, no new schema. Row shape is deliberately the
-// same one import's preview/commit routes use (anilistId/status/score/
-// progress), so this can double as the fixture format for testing import.
+// GET /api/export?format=json|csv — download the signed-in user's own list,
+// straight from AniList (the only place it lives now — see
+// anilist-client.ts's file comment). Row shape is deliberately the same one
+// import's preview/commit routes use (anilistId/status/score/progress), so
+// this can double as the fixture format for testing import.
 //
 // Stayed server-side deliberately (unlike Browse/Seasonal/etc.): this is a
 // one-time, explicit, user-initiated action, not routine browsing traffic
 // — same reasoning as import/resolve.ts's live fallback. Uses
 // src/lib/anilist.ts, which is a live, uncached pass-through (no
-// server-side storage), not the old AnimeCache-backed version.
+// server-side storage).
 function csvCell(value: string | number | null): string {
   const s = value == null ? "" : String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -24,10 +26,8 @@ export async function GET(req: NextRequest) {
 
   const format = req.nextUrl.searchParams.get("format") === "csv" ? "csv" : "json";
 
-  const entries = await prisma.animeListEntry.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-  });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  const entries = user?.name ? await getAnilistUserList(user.name) : [];
 
   const media = await getAnimeCardsByIds(entries.map((e) => e.anilistId));
   const mediaById = new Map(media.map((m) => [m.id, m]));
@@ -38,19 +38,17 @@ export async function GET(req: NextRequest) {
     return {
       anilistId: e.anilistId,
       title,
-      status: e.status,
+      status: ANILIST_STATUS_TO_OURS[e.status] ?? "PLANNED",
       score: e.score,
       progress: e.progress,
       episodes: anime?.episodes ?? null,
-      notes: e.notes,
-      updatedAt: e.updatedAt.toISOString(),
     };
   });
 
   const date = new Date().toISOString().slice(0, 10);
 
   if (format === "csv") {
-    const header = ["anilistId", "title", "status", "score", "progress", "episodes", "notes", "updatedAt"];
+    const header = ["anilistId", "title", "status", "score", "progress", "episodes"];
     const lines = [
       header.join(","),
       ...rows.map((r) => header.map((key) => csvCell(r[key as keyof typeof r])).join(",")),

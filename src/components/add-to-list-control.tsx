@@ -37,6 +37,7 @@ export function AddToListControl({
 }) {
   const [entry, setEntry] = useState<Entry | null>(initialEntry);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
   const [progressInput, setProgressInput] = useState(String(initialEntry?.progress ?? 0));
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -55,15 +56,26 @@ export function AddToListControl({
   // invalidates it so navigating back after an edit shows the real values,
   // not a stale snapshot from before the edit.
   async function save(next: Entry) {
+    const previous = entry;
     setEntry(next);
     setProgressInput(String(next.progress));
+    setError(false);
     setSaving(true);
     try {
-      await fetch("/api/list", {
+      const res = await fetch("/api/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ anilistId, ...next }),
       });
+      if (!res.ok) {
+        // AniList is the only copy of this now — a failed sync here means
+        // nothing was actually saved anywhere, so revert the optimistic
+        // update rather than leave the UI showing a value AniList never got.
+        setEntry(previous);
+        setProgressInput(String(previous?.progress ?? 0));
+        setError(true);
+        return;
+      }
       router.refresh();
     } finally {
       setSaving(false);
@@ -71,9 +83,16 @@ export function AddToListControl({
   }
 
   async function remove() {
+    const previous = entry;
     setEntry(null);
     setOpen(false);
-    await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+    setError(false);
+    const res = await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+    if (!res.ok) {
+      setEntry(previous);
+      setError(true);
+      return;
+    }
     router.refresh();
   }
 
@@ -104,13 +123,16 @@ export function AddToListControl({
 
   if (!entry) {
     return (
-      <button
-        type="button"
-        onClick={() => save({ status: "PLANNED", score: null, progress: 0 })}
-        className="border border-hanko bg-hanko px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
-      >
-        + Add to list
-      </button>
+      <div className="flex flex-col items-start gap-1.5">
+        <button
+          type="button"
+          onClick={() => save({ status: "PLANNED", score: null, progress: 0 })}
+          className="border border-hanko bg-hanko px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
+        >
+          + Add to list
+        </button>
+        {error && <span className="font-mono text-[11px] text-hanko">Couldn&apos;t save to AniList. Try again.</span>}
+      </div>
     );
   }
 
@@ -127,6 +149,9 @@ export function AddToListControl({
         {entry.score != null && <span>· {entry.score}/10</span>}
         <span className="text-[10px]">{open ? "▴" : "▾"}</span>
       </button>
+      {error && (
+        <p className="mt-1 font-mono text-[11px] text-hanko">Couldn&apos;t save to AniList. Try again.</p>
+      )}
 
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 flex w-72 flex-col gap-4 border border-line bg-ink p-4 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">

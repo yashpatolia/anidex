@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
+import { getAnilistUserList } from "@/lib/anilist";
 import { MAX_FAVORITES } from "@/lib/profile-prefs";
 
 const sectionSchema = z.object({
@@ -41,25 +42,24 @@ export async function PATCH(req: NextRequest) {
   const { profilePrefs, ...rest } = parsed.data;
 
   // A banner or favorite pointing at something not actually on the owner's
-  // list would just be a broken picture (there'd be nothing to look up), so
-  // silently drop anything that doesn't check out rather than erroring —
-  // the client already only offers picks from the owner's own entries.
+  // AniList list would just be a broken picture (there'd be nothing to
+  // look up), so silently drop anything that doesn't check out rather than
+  // erroring — the client already only offers picks from the owner's own
+  // entries. AniList is the only place list data lives now (see
+  // anilist-client.ts's file comment), so "owned" means "on the user's
+  // real AniList list", checked with a live fetch here.
   let cleanedPrefs = profilePrefs;
   if (profilePrefs) {
     const candidateIds = [
       ...(profilePrefs.bannerAnilistId != null ? [profilePrefs.bannerAnilistId] : []),
       ...profilePrefs.favoriteIds,
     ];
-    const owned = candidateIds.length
-      ? new Set(
-          (
-            await prisma.animeListEntry.findMany({
-              where: { userId, anilistId: { in: candidateIds } },
-              select: { anilistId: true },
-            })
-          ).map((e) => e.anilistId),
-        )
-      : new Set<number>();
+    let owned = new Set<number>();
+    if (candidateIds.length) {
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      const current = user?.name ? await getAnilistUserList(user.name) : [];
+      owned = new Set(current.map((e) => e.anilistId));
+    }
     cleanedPrefs = {
       ...profilePrefs,
       bannerAnilistId:

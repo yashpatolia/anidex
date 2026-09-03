@@ -8,8 +8,11 @@ import type { AnilistMedia } from "@/lib/anilist-client";
 export type ViewMode = "grid" | "list" | "compact";
 export type SortMode = "titleAsc" | "titleDesc" | "scoreAsc" | "scoreDesc";
 
+// No local `id` field — AniList is the only place this data lives now (see
+// anilist-client.ts's file comment), and `anime.id` (the AniList media id)
+// is already unique per list, so it doubles as the React key everywhere
+// entry.id used to be used.
 export type ListEntry = {
-  id: string;
   status: string;
   score: number | null;
   progress: number;

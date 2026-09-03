@@ -1,73 +1,83 @@
 "use client";
 
-// Client-fetched hydration + stats for the Profile/list page (see
+// Client-fetched list + stats for the Profile/list page (see
 // anilist-client.ts's file comment for the overall architecture). The
-// server page (src/app/u/[username]/page.tsx) still resolves access,
-// bio, avatar, prefs, and follow state — all our own data — and passes
-// raw list entries down; this component hydrates them with real AniList
-// data and computes the stats block, then renders the same
-// ProfilePageView every other build of this page already used.
+// server page (src/app/u/[username]/page.tsx) still resolves access, bio,
+// avatar, prefs, and follow state — all our own data — and passes down
+// which AniList account to read (the page owner's, and the viewer's own
+// for tracked-state); this component does the actual list fetch and stats
+// computation, then renders the same ProfilePageView every other build of
+// this page already used. A public AniList profile is required for anyone
+// but the owner to see anything here — see the empty state below.
 import { useEffect, useState } from "react";
-import { getAnimeCardsByIds } from "@/lib/anilist-client";
+import { getUserMediaList } from "@/lib/anilist-client";
 import { ProfilePageView } from "@/components/profile-page-view";
 import { PageLoading } from "@/components/page-loading";
 import type { ProfilePrefs } from "@/lib/profile-prefs";
 import type { ListEntry, ListStats } from "@/lib/list-view";
 
-type RawEntry = { id: string; anilistId: number; status: string; score: number | null; progress: number };
-
 export function ProfileDataView({
   username,
+  ownerAnilistUsername,
   bio,
   avatarSrc,
   prefs,
-  rawEntries,
   isOwner,
-  viewerTrackedIds,
+  viewerAnilistUsername,
   follow,
   emptyOwnerState,
 }: {
   username: string;
+  // The AniList account this profile actually reads from — our own
+  // `username` above is just the display handle (see account-view.tsx),
+  // set from this at sign-up but not necessarily identical in case/charset
+  // after sanitizing.
+  ownerAnilistUsername: string | null;
   bio: string | null;
   avatarSrc: string | null;
   prefs: ProfilePrefs;
-  rawEntries: RawEntry[];
   isOwner: boolean;
-  viewerTrackedIds: number[];
+  // The current *viewer's* own AniList account, used only to compute
+  // tracked-state on this page's cards for a signed-in non-owner visitor —
+  // never the owner's. Null when signed out, or when isOwner (their own
+  // cards are always tracked, no lookup needed).
+  viewerAnilistUsername: string | null;
   follow: { counts: { followers: number; following: number }; showButton: boolean; viewerIsFollowing: boolean };
   emptyOwnerState: React.ReactNode;
 }) {
-  // Lazy initializer, not a setState-in-effect: an empty list needs no
-  // async hydration at all, so it can resolve synchronously on first
-  // render instead of round-tripping through an effect.
-  const [entries, setEntries] = useState<ListEntry[] | null>(() => (rawEntries.length === 0 ? [] : null));
+  // Lazy initializer, not a setState-in-effect: no linked AniList account
+  // means there's nothing to fetch, so that case can resolve synchronously
+  // on first render instead of round-tripping through an effect.
+  const [entries, setEntries] = useState<ListEntry[] | null>(() => (ownerAnilistUsername ? null : []));
+  const [viewerTrackedIds, setViewerTrackedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (rawEntries.length === 0) return;
+    if (!ownerAnilistUsername) return;
     let cancelled = false;
-    getAnimeCardsByIds(rawEntries.map((e) => e.anilistId)).then((media) => {
-      if (cancelled) return;
-      const mediaById = new Map(media.map((m) => [m.id, m]));
-      setEntries(
-        rawEntries
-          .map((e) => {
-            const anime = mediaById.get(e.anilistId);
-            if (!anime) return null;
-            return { id: e.id, status: e.status, score: e.score, progress: e.progress, anime };
-          })
-          .filter((e): e is ListEntry => e !== null),
-      );
+    getUserMediaList(ownerAnilistUsername).then((list) => {
+      if (!cancelled) setEntries(list);
     });
     return () => {
       cancelled = true;
     };
-  }, [rawEntries]);
+  }, [ownerAnilistUsername]);
 
-  if (isOwner && rawEntries.length === 0) return <>{emptyOwnerState}</>;
+  useEffect(() => {
+    let cancelled = false;
+    if (!viewerAnilistUsername) return;
+    getUserMediaList(viewerAnilistUsername).then((list) => {
+      if (!cancelled) setViewerTrackedIds(new Set(list.map((e) => e.anime.id)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerAnilistUsername]);
+
   if (entries === null) return <PageLoading />;
+  if (isOwner && entries.length === 0) return <>{emptyOwnerState}</>;
 
-  const episodesWatched = rawEntries.reduce((sum, e) => sum + e.progress, 0);
-  const scored = rawEntries.filter((e) => e.score != null);
+  const episodesWatched = entries.reduce((sum, e) => sum + e.progress, 0);
+  const scored = entries.filter((e) => e.score != null);
   const avgScore = scored.length
     ? (scored.reduce((sum, e) => sum + (e.score ?? 0), 0) / scored.length).toFixed(1)
     : null;
@@ -80,7 +90,7 @@ export function ProfileDataView({
   }
   const topGenres = [...genreCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
 
-  const stats: ListStats = { total: rawEntries.length, episodesWatched, avgScore, topGenres };
+  const stats: ListStats = { total: entries.length, episodesWatched, avgScore, topGenres };
 
   return (
     <ProfilePageView
@@ -91,7 +101,7 @@ export function ProfileDataView({
       entries={entries}
       stats={stats}
       isOwner={isOwner}
-      viewerTrackedIds={new Set(viewerTrackedIds)}
+      viewerTrackedIds={viewerTrackedIds}
       follow={follow}
     />
   );

@@ -6,8 +6,11 @@
 // for every user, which is exactly the kind of routine traffic (not a
 // one-time user-initiated action like import/export) the whole rewrite
 // moved off the server. markNotificationRead/markAllNotificationsRead stay
-// server-side in notifications.ts — they never touched AniList at all.
-import { getNextEpisodesByIds, getAnimeCardsByIds, type AnilistMedia } from "@/lib/anilist-client";
+// server-side in notifications.ts — they never touched AniList at all. The
+// Watching/Rewatching list itself now comes straight from AniList too (see
+// getUserMediaList), not our own DB — there's no local list left to check
+// it against.
+import { getNextEpisodesByIds, getAnimeCardsByIds, getUserMediaList, type AnilistMedia } from "@/lib/anilist-client";
 
 export type NotificationItem = {
   id: string;
@@ -23,9 +26,11 @@ export type NotificationItem = {
 // recent few count as worth notifying about at once.
 const MAX_BACKLOG_EPISODES = 5;
 
-async function syncEpisodeNotifications(): Promise<void> {
-  const watchingRes = await fetch("/api/notifications/watching");
-  const { entries }: { entries: { anilistId: number; progress: number }[] } = await watchingRes.json();
+async function syncEpisodeNotifications(anilistUsername: string): Promise<void> {
+  const list = await getUserMediaList(anilistUsername);
+  const entries = list
+    .filter((e) => e.status === "WATCHING" || e.status === "REWATCHING")
+    .map((e) => ({ anilistId: e.anime.id, progress: e.progress }));
   if (entries.length === 0) return;
 
   const nextEpisodes = await getNextEpisodesByIds(entries.map((e) => e.anilistId));
@@ -55,8 +60,10 @@ async function syncEpisodeNotifications(): Promise<void> {
 
 type RawNotification = { id: string; anilistId: number; episode: number; read: boolean; createdAt: string };
 
-export async function syncAndGetNotifications(): Promise<{ items: NotificationItem[]; unreadCount: number }> {
-  await syncEpisodeNotifications();
+export async function syncAndGetNotifications(
+  anilistUsername: string,
+): Promise<{ items: NotificationItem[]; unreadCount: number }> {
+  await syncEpisodeNotifications(anilistUsername);
 
   const res = await fetch("/api/notifications/raw");
   const { rows, unreadCount }: { rows: RawNotification[]; unreadCount: number } = await res.json();

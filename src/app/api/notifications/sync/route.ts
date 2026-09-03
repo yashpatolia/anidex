@@ -8,15 +8,16 @@ const bodySchema = z.object({
 });
 
 // POST /api/notifications/sync — persists newly-aired-episode rows the
-// client computed itself (fetched the user's Watching/Rewatching list from
-// /api/notifications/watching, then checked AniList's nextAiringEpisode for
-// each — see notifications-client.ts). Only ever writes rows for anime the
-// caller actually has Watching/Rewatching, re-checked here rather than
-// trusted blindly from the client body — a malicious payload could at
-// worst spam a user's *own* notification feed for shows already on their
-// own list, not affect anyone else's data, but there's no reason not to
-// bound it. The (userId, anilistId, episode) unique constraint (see
-// schema.prisma) makes this safe to call repeatedly with overlapping rows.
+// client computed itself (fetched the user's Watching/Rewatching list live
+// from AniList, then checked AniList's nextAiringEpisode for each — see
+// notifications-client.ts). Trusted as-is, not re-checked against a local
+// Watching list here — there's no local list left to check it against,
+// AniList is the only copy now (see anilist-client.ts's file comment). A
+// malicious payload could at worst spam a user's *own* notification feed
+// with rows for anime they don't actually have Watching, not affect
+// anyone else's data — scoped to the caller's own userId either way. The
+// (userId, anilistId, episode) unique constraint (see schema.prisma) makes
+// this safe to call repeatedly with overlapping rows.
 export async function POST(req: NextRequest) {
   const userId = await requireUserId();
   if (userId instanceof NextResponse) return userId;
@@ -28,21 +29,7 @@ export async function POST(req: NextRequest) {
   }
   if (parsed.data.rows.length === 0) return NextResponse.json({ ok: true });
 
-  const watching = await prisma.animeListEntry.findMany({
-    where: {
-      userId,
-      status: { in: ["WATCHING", "REWATCHING"] },
-      anilistId: { in: parsed.data.rows.map((r) => r.anilistId) },
-    },
-    select: { anilistId: true },
-  });
-  const watchingIds = new Set(watching.map((w) => w.anilistId));
-
-  const rows = parsed.data.rows
-    .filter((r) => watchingIds.has(r.anilistId))
-    .map((r) => ({ userId, anilistId: r.anilistId, episode: r.episode }));
-  if (rows.length === 0) return NextResponse.json({ ok: true });
-
+  const rows = parsed.data.rows.map((r) => ({ userId, anilistId: r.anilistId, episode: r.episode }));
   await prisma.notification.createMany({ data: rows, skipDuplicates: true });
   return NextResponse.json({ ok: true });
 }

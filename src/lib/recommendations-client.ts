@@ -11,7 +11,7 @@
 // entirely: for each of the signed-in user's highest-scored watched
 // anime, pull that anime's own AniList recommendations, hydrate them to
 // full cards, exclude what's already tracked, dedupe across rows.
-import { getAnimeByIds, getAnimeCardsByIds, type AnilistMedia } from "@/lib/anilist-client";
+import { getAnimeByIds, getAnimeCardsByIds, getUserMediaList, type AnilistMedia } from "@/lib/anilist-client";
 
 const WATCHED_STATUSES = new Set(["COMPLETED", "WATCHING", "REWATCHING"]);
 
@@ -25,18 +25,15 @@ export type RecommendationRail = {
   media: AnilistMedia[];
 };
 
-type RawEntry = { anilistId: number; status: string; score: number | null };
-
 export async function getRecommendationRails(
+  anilistUsername: string,
   maxRails: number,
   perRail: number,
 ): Promise<RecommendationRail[]> {
-  const res = await fetch("/api/list/raw");
-  if (!res.ok) return [];
-  const { entries }: { entries: RawEntry[] } = await res.json();
+  const entries = await getUserMediaList(anilistUsername);
   if (entries.length === 0) return [];
 
-  const trackedIds = new Set(entries.map((e) => e.anilistId));
+  const trackedIds = new Set(entries.map((e) => e.anime.id));
   const watched = entries.filter((e) => WATCHED_STATUSES.has(e.status));
   if (watched.length === 0) return [];
 
@@ -44,7 +41,7 @@ export async function getRecommendationRails(
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, maxRails * ANCHOR_MULTIPLIER);
 
-  const anchorDetails = await getAnimeByIds(anchors.map((a) => a.anilistId));
+  const anchorDetails = await getAnimeByIds(anchors.map((a) => a.anime.id));
   const detailByAnilistId = new Map(anchorDetails.map((d) => [d.id, d]));
 
   const candidateIds = [
@@ -62,7 +59,7 @@ export async function getRecommendationRails(
 
   for (const anchor of anchors) {
     if (rails.length >= maxRails) break;
-    const detail = detailByAnilistId.get(anchor.anilistId);
+    const detail = detailByAnilistId.get(anchor.anime.id);
     if (!detail) continue;
 
     const rowMedia = detail.recommendations.nodes

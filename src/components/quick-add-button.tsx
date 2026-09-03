@@ -49,14 +49,21 @@ export function QuickAddButton({
   }
 
   async function chooseStatus(status: Status) {
+    const wasTracked = tracked;
     setBusy(true);
     setOpen(false);
     try {
-      await fetch("/api/list/quick-add", {
+      const res = await fetch("/api/list/quick-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ anilistId, status }),
       });
+      if (!res.ok) {
+        // AniList is the only copy of this now — a failed sync means
+        // nothing actually saved, so don't leave the button showing tracked.
+        setTracked(wasTracked);
+        return;
+      }
       setTracked(true);
       // Invalidates Next's client-side Router Cache so Profile shows this
       // change immediately on the next navigation there, not a stale copy.
@@ -73,7 +80,11 @@ export function QuickAddButton({
     setBusy(true);
     setTracked(false); // optimistic
     try {
-      await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+      const res = await fetch(`/api/list/${anilistId}`, { method: "DELETE" });
+      if (!res.ok) {
+        setTracked(true);
+        return;
+      }
       router.refresh();
     } finally {
       setBusy(false);

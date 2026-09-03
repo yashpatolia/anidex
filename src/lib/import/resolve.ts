@@ -4,7 +4,7 @@
 // matched to an AniList id are returned separately so the UI can show them
 // as skipped rather than silently dropping them.
 import { getAnilistIdsByMalIds, searchAnime, type AnilistListEntry } from "@/lib/anilist";
-import { WatchStatus } from "@/generated/prisma/client";
+import { ANILIST_STATUS_TO_OURS, type WatchStatus } from "@/lib/anilist-shared";
 import type { MalEntry } from "./mal-parser";
 
 export type ResolvedEntry = {
@@ -21,20 +21,11 @@ export type UnmatchedEntry = {
 };
 
 const MAL_STATUS_MAP: Record<MalEntry["status"], WatchStatus> = {
-  Watching: WatchStatus.WATCHING,
-  Completed: WatchStatus.COMPLETED,
-  "On-Hold": WatchStatus.PAUSED,
-  Dropped: WatchStatus.DROPPED,
-  "Plan to Watch": WatchStatus.PLANNED,
-};
-
-const ANILIST_STATUS_MAP: Record<string, WatchStatus> = {
-  CURRENT: WatchStatus.WATCHING,
-  PLANNING: WatchStatus.PLANNED,
-  COMPLETED: WatchStatus.COMPLETED,
-  DROPPED: WatchStatus.DROPPED,
-  PAUSED: WatchStatus.PAUSED,
-  REPEATING: WatchStatus.REWATCHING,
+  Watching: "WATCHING",
+  Completed: "COMPLETED",
+  "On-Hold": "PAUSED",
+  Dropped: "DROPPED",
+  "Plan to Watch": "PLANNED",
 };
 
 export async function resolveMalEntries(
@@ -88,7 +79,7 @@ function toResolved(anilistId: number, entry: MalEntry): ResolvedEntry {
   return {
     anilistId,
     title: entry.title,
-    status: entry.rewatching && entry.status === "Watching" ? WatchStatus.REWATCHING : MAL_STATUS_MAP[entry.status],
+    status: entry.rewatching && entry.status === "Watching" ? "REWATCHING" : MAL_STATUS_MAP[entry.status],
     score: entry.score > 0 ? entry.score : null,
     progress: entry.progress,
   };
@@ -97,8 +88,8 @@ function toResolved(anilistId: number, entry: MalEntry): ResolvedEntry {
 export function resolveAnilistEntries(entries: AnilistListEntry[]): ResolvedEntry[] {
   return entries.map((e) => ({
     anilistId: e.anilistId,
-    title: `#${e.anilistId}`, // real title gets filled in by the preview route via AnimeCache
-    status: ANILIST_STATUS_MAP[e.status] ?? WatchStatus.PLANNED,
+    title: `#${e.anilistId}`, // real title gets filled in by the preview route's live AniList lookup
+    status: ANILIST_STATUS_TO_OURS[e.status] ?? "PLANNED",
     score: e.score > 0 ? Math.round(e.score) : null,
     progress: e.progress,
   }));

@@ -3,7 +3,6 @@ import type { OAuthConfig } from "next-auth/providers";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueUsername } from "@/lib/username";
-import { importInitialAnilistList } from "@/lib/anilist-sync";
 
 // AniList profile, from the Viewer query in the custom userinfo request
 // below — not a built-in Auth.js provider, so this whole config is custom.
@@ -154,14 +153,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         data: { username },
       });
     },
-    // isNewUser is only true on the sign-in that triggered createUser
-    // above (same underlying event, different data available on each —
-    // createUser doesn't get account/profile, this one does) — see
-    // anilist-sync.ts's importInitialAnilistList for why this is the hook
-    // for a one-time pull of the user's existing AniList list.
-    async signIn({ user, account, isNewUser }) {
-      if (!isNewUser || !user.id || account?.provider !== "anilist" || !user.name) return;
-      await importInitialAnilistList(user.id, user.name);
-    },
+    // No initial-list-import step here: AniList is the only place list
+    // data lives (see anilist-client.ts's file comment), so there's no
+    // local copy to seed on first sign-in — every page just reads the
+    // user's real AniList list live, straight away.
   },
 });

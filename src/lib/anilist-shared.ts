@@ -55,3 +55,33 @@ export const BROWSE_SORTS = [
   { value: "TRENDING_DESC", label: "Trending" },
   { value: "START_DATE_DESC", label: "Newest" },
 ] as const;
+
+// AniDex's own list-status vocabulary, and its mapping to/from AniList's
+// MediaListStatus enum (names differ for two of six: WATCHING <-> CURRENT,
+// REWATCHING <-> REPEATING). Deliberately a plain array/union here, not
+// the generated Prisma enum — AniList *is* the list store now (see
+// anilist-client.ts's file comment), so this has no database-generated
+// code to mirror; it's just the shape both the browser (reading/writing
+// AniList directly) and the server (writing AniList via the stored OAuth
+// token) need to agree on. An array (not just a union type) so it doubles
+// as a zod z.enum() source wherever a route needs to validate one.
+export const WATCH_STATUSES = ["WATCHING", "COMPLETED", "PLANNED", "DROPPED", "PAUSED", "REWATCHING"] as const;
+export type WatchStatus = (typeof WATCH_STATUSES)[number];
+
+export const STATUS_TO_ANILIST: Record<WatchStatus, string> = {
+  WATCHING: "CURRENT",
+  COMPLETED: "COMPLETED",
+  PLANNED: "PLANNING",
+  DROPPED: "DROPPED",
+  PAUSED: "PAUSED",
+  REWATCHING: "REPEATING",
+};
+
+export const ANILIST_STATUS_TO_OURS: Record<string, WatchStatus> = {
+  CURRENT: "WATCHING",
+  PLANNING: "PLANNED",
+  COMPLETED: "COMPLETED",
+  DROPPED: "DROPPED",
+  PAUSED: "PAUSED",
+  REPEATING: "REWATCHING",
+};

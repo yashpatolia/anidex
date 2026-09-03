@@ -32,6 +32,7 @@
 // seasonal/page.tsx needs getCurrentSeason() before it ever renders
 // anything client-side.
 export { SEASONS, getCurrentSeason, BROWSE_GENRES, BROWSE_FORMATS, BROWSE_STATUSES, BROWSE_SORTS } from "@/lib/anilist-shared";
+import { ANILIST_STATUS_TO_OURS, type WatchStatus } from "@/lib/anilist-shared";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 
@@ -257,6 +258,93 @@ export function getAnimeByIds(ids: number[]): Promise<AnilistMediaDetail[]> {
 
 export function getAnimeCardsByIds(ids: number[]): Promise<AnilistMedia[]> {
   return getMediaByIds<AnilistMedia>(ids, MEDIA_FIELDS, 10);
+}
+
+export type AnilistListEntry = {
+  status: WatchStatus;
+  score: number | null;
+  progress: number;
+  anime: AnilistMedia;
+};
+
+// A whole user's AniList anime list, hydrated with full card fields in one
+// request — AniList *is* the list store now (see this file's header
+// comment), so this replaces every place that used to read AniDex's own
+// AnimeListEntry table: Profile/u/[username] (own or someone else's, as
+// long as it's public on AniList), the tracked-ids overlay on cards
+// (useTrackedIds), recommendations' watched anchors, and notifications'
+// Watching list. `score(format: POINT_10)` normalizes AniList's own
+// per-profile scoreFormat setting (POINT_100, POINT_5, etc.) to this app's
+// fixed 1-10 scale, so callers never need to know or care what scale the
+// list owner's AniList profile actually uses.
+export async function getUserMediaList(username: string): Promise<AnilistListEntry[]> {
+  const query = `
+    query ($username: String) {
+      MediaListCollection(userName: $username, type: ANIME) {
+        lists {
+          entries {
+            status
+            score(format: POINT_10)
+            progress
+            media { ${MEDIA_FIELDS} }
+          }
+        }
+      }
+    }
+  `;
+  const data = await anilistFetch<{
+    MediaListCollection: {
+      lists: { entries: { status: string; score: number; progress: number; media: AnilistMedia }[] }[];
+    } | null;
+  }>(query, { username });
+
+  if (!data.MediaListCollection) return [];
+  return data.MediaListCollection.lists.flatMap((list) =>
+    list.entries.map((e) => ({
+      status: ANILIST_STATUS_TO_OURS[e.status] ?? "PLANNED",
+      score: e.score > 0 ? Math.round(e.score) : null,
+      progress: e.progress,
+      anime: e.media,
+    })),
+  );
+}
+
+// A single anime's list entry for one user — only ever the *signed-in*
+// user's own (AniList's MediaList query only resolves entries for the
+// authenticated viewer; there's no userName-filtered single-entry lookup —
+// confirmed live against the schema), used by the anime detail page to
+// show the current status/score/progress in AddToListControl. A null
+// result means signed out, or not tracked.
+export async function getUserMediaListEntry(
+  anilistId: number,
+  username: string,
+): Promise<{ status: WatchStatus; score: number | null; progress: number } | null> {
+  const query = `
+    query ($mediaId: Int, $userName: String) {
+      MediaList(mediaId: $mediaId, userName: $userName) {
+        status
+        score(format: POINT_10)
+        progress
+      }
+    }
+  `;
+  try {
+    const data = await anilistFetch<{ MediaList: { status: string; score: number; progress: number } | null }>(
+      query,
+      { mediaId: anilistId, userName: username },
+    );
+    if (!data.MediaList) return null;
+    return {
+      status: ANILIST_STATUS_TO_OURS[data.MediaList.status] ?? "PLANNED",
+      score: data.MediaList.score > 0 ? Math.round(data.MediaList.score) : null,
+      progress: data.MediaList.progress,
+    };
+  } catch (err) {
+    // AniList 404s (not a GraphQL "errors" response, an actual HTTP 404)
+    // when there's no entry for this media/user pair at all.
+    if (err instanceof AnilistError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 export async function getSeasonalAnime(season: string, year: number, page = 1, perPage = 50) {
