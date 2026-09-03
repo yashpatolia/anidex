@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
 import { getCachedAnimeByIds } from "@/lib/anime-cache";
+import { syncListEntryToAnilist } from "@/lib/anilist-sync";
 import { WatchStatus } from "@/generated/prisma/client";
 
 const upsertSchema = z.object({
@@ -51,6 +52,15 @@ export async function POST(req: NextRequest) {
     update: { status, score, progress, notes },
     create: { userId, anilistId, status, score, progress, notes },
   });
+
+  // Awaited (not fire-and-forget) so it actually runs to completion on
+  // this self-hosted, persistent Node process rather than racing the
+  // response — but never blocks or fails the *local* write: a failed
+  // AniList sync is caught and logged inside syncListEntryToAnilist
+  // itself (AniDex's DB stays the source of truth this app reads from), a
+  // real but separate reliability gap for now, not something that should
+  // roll back a successful local save.
+  await syncListEntryToAnilist(userId, anilistId, { status, score: score ?? null, progress });
 
   return NextResponse.json(entry);
 }

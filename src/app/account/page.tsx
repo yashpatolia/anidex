@@ -19,10 +19,10 @@ export default async function AccountPage() {
       email: true,
       username: true,
       usernameAutoAssigned: true,
-      passwordHash: true,
+      name: true,
       image: true,
       avatarImage: true,
-      accounts: { select: { provider: true } },
+      accounts: { where: { provider: "anilist" }, select: { provider: true } },
     },
   });
   if (!user) redirect("/login");
@@ -33,8 +33,9 @@ export default async function AccountPage() {
       email={user.email}
       username={user.username}
       usernameAutoAssigned={user.usernameAutoAssigned}
-      hasPassword={user.passwordHash != null}
-      providers={user.accounts.map((a) => a.provider)}
+      // AniList's Viewer.name (their AniList username) is stored as our
+      // User.name on sign-in — see the profile() mapping in auth.ts.
+      anilistUsername={user.accounts.length > 0 ? user.name : null}
       avatarSrc={user.avatarImage ?? user.image}
       hasCustomAvatar={user.avatarImage != null}
     />

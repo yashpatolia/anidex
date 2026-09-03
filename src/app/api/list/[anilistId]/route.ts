@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
+import { deleteListEntryFromAnilist } from "@/lib/anilist-sync";
 
 export async function DELETE(
   _req: NextRequest,
@@ -15,5 +16,6 @@ export async function DELETE(
   }
 
   await prisma.animeListEntry.deleteMany({ where: { userId, anilistId } });
+  await deleteListEntryFromAnilist(userId, anilistId);
   return NextResponse.json({ ok: true });
 }

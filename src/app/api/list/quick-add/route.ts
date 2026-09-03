@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
+import { syncListEntryToAnilist } from "@/lib/anilist-sync";
 
 const bodySchema = z.object({
   anilistId: z.number().int().positive(),
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
     where: { userId_anilistId: { userId, anilistId } },
     create: { userId, anilistId, status },
     update: { status }, // status only — score/progress/notes stay whatever they already were
+  });
+
+  // See src/app/api/list/route.ts's POST handler for why this is awaited
+  // but never fails the local write.
+  await syncListEntryToAnilist(userId, anilistId, {
+    status: entry.status,
+    score: entry.score,
+    progress: entry.progress,
   });
 
   return NextResponse.json(entry);

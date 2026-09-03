@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { signIn, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { isValidUsername } from "@/lib/username";
 import { AvatarUpload } from "@/components/avatar-upload";
@@ -31,17 +31,12 @@ function labelClass() {
   return "font-mono text-[10px] uppercase tracking-widest text-ash";
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-  google: "Google",
-};
-
 export function AccountView({
   bio,
   email,
   username,
   usernameAutoAssigned,
-  hasPassword,
-  providers,
+  anilistUsername,
   avatarSrc,
   hasCustomAvatar,
 }: {
@@ -49,8 +44,11 @@ export function AccountView({
   email: string | null;
   username: string | null;
   usernameAutoAssigned: boolean;
-  hasPassword: boolean;
-  providers: string[];
+  // The AniList account this AniDex account is linked to — AniList is the
+  // only sign-in method, so unlike the old multi-provider setup this is
+  // never absent for a real session, but stays nullable for the type to be
+  // honest about a row that somehow lost its Account link.
+  anilistUsername: string | null;
   avatarSrc: string | null;
   hasCustomAvatar: boolean;
 }) {
@@ -99,14 +97,6 @@ export function AccountView({
     notifyNudgeDismissed();
   }
 
-  // Change password
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-  const [passwordSaving, setPasswordSaving] = useState(false);
-
   // Delete account
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -140,38 +130,6 @@ export function AccountView({
       router.refresh();
     } finally {
       setProfileSaving(false);
-    }
-  }
-
-  async function changePassword(e: React.FormEvent) {
-    e.preventDefault();
-    setPasswordError(null);
-    setPasswordSaved(false);
-    if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords don't match.");
-      return;
-    }
-    setPasswordSaving(true);
-    try {
-      const res = await fetch("/api/account/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          hasPassword ? { currentPassword, newPassword } : { newPassword },
-        ),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setPasswordError(data?.error ?? "Something went wrong.");
-        return;
-      }
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordSaved(true);
-      router.refresh();
-    } finally {
-      setPasswordSaving(false);
     }
   }
 
@@ -274,93 +232,19 @@ export function AccountView({
         </p>
       </section>
 
-      {/* Sign-in methods */}
+      {/* Sign-in */}
       <section className="flex flex-col gap-3 border-t border-line pt-8">
-        <h2 className="font-display text-lg text-paper">Sign-in methods</h2>
-        <ul className="flex flex-col gap-1.5 font-mono text-xs uppercase tracking-wide text-paper">
-          {providers.map((p) => (
-            <li key={p}>{PROVIDER_LABELS[p] ?? p}</li>
-          ))}
-          {hasPassword && <li>Password</li>}
-        </ul>
-        {!providers.includes("google") && (
-          <button
-            type="button"
-            onClick={() => signIn("google", { callbackUrl: "/account" })}
-            className="self-start border border-line px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-ash transition-colors hover:border-hanko hover:text-hanko"
-          >
-            Link Google account
-          </button>
-        )}
-      </section>
-
-      {/* Change / set password */}
-      <section className="flex flex-col gap-4 border-t border-line pt-8">
-        <h2 className="font-display text-lg text-paper">
-          {hasPassword ? "Change password" : "Set a password"}
-        </h2>
-        {!hasPassword && (
-          <p className="text-sm text-ash">
-            You currently sign in with Google only. Add a password so you can
-            also sign in with your email.
-          </p>
-        )}
-        <form onSubmit={changePassword} className="flex flex-col gap-4">
-          {hasPassword && (
-            <label className="flex flex-col gap-1.5">
-              <span className={labelClass()}>Current password</span>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className={fieldClass()}
-              />
-            </label>
+        <h2 className="font-display text-lg text-paper">Sign-in</h2>
+        <p className="text-sm text-ash">
+          Linked to your AniList account
+          {anilistUsername && (
+            <>
+              {" "}
+              <span className="font-mono text-paper">@{anilistUsername}</span>
+            </>
           )}
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <label className="flex flex-1 flex-col gap-1.5">
-              <span className={labelClass()}>New password</span>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-                className={fieldClass()}
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1.5">
-              <span className={labelClass()}>Confirm new password</span>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={8}
-                className={fieldClass()}
-              />
-            </label>
-          </div>
-          {passwordError && (
-            <p className="font-mono text-xs text-hanko">{passwordError}</p>
-          )}
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={passwordSaving}
-              className="self-start border border-hanko bg-hanko px-5 py-2 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
-            >
-              {passwordSaving
-                ? "Saving…"
-                : hasPassword
-                  ? "Update password"
-                  : "Set password"}
-            </button>
-            {passwordSaved && (
-              <span className="font-mono text-xs text-ash">
-                Password saved.
-              </span>
-            )}
-          </div>
-        </form>
+          . Your list stays in sync with AniList both ways.
+        </p>
       </section>
 
       {/* Delete account */}

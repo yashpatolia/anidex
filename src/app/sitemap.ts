@@ -27,6 +27,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/seasonal`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${baseUrl}/airing`, changeFrequency: "daily", priority: 0.6 },
     { url: `${baseUrl}/login`, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${baseUrl}/register`, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

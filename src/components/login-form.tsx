@@ -1,125 +1,51 @@
 "use client";
 
-import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
-// Dev/CI convenience: the seeded dev user's credentials, shown as a hint
-// under the form. Has no effect on which providers are available — that's
-// unconditional now that real signup exists (see /register).
-const SHOW_DEV_HINT = process.env.NODE_ENV !== "production";
-
-// Auth.js redirects here with ?error=... when an OAuth sign-in fails
-// server-side (e.g. clicking "Link Google" from Account settings for a
-// Google account that's already tied to a different AniDex account).
+// Auth.js redirects here with ?error=... when OAuth sign-in fails
+// server-side.
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  OAuthAccountNotLinked: "That Google account is already linked to a different AniDex account.",
+  OAuthAccountNotLinked: "That AniList account is already linked to a different AniDex account.",
 };
 
-function GoogleIcon() {
+function AniListIcon() {
+  // AniList's own mark — simplified to a single path at the size this
+  // button needs, in the button's own currentColor rather than AniList's
+  // brand blue, matching how the Google icon used to be full-color but
+  // this button is a plain outlined control like the rest of the form.
   return (
-    <svg viewBox="0 0 18 18" className="h-4 w-4" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"
-      />
-      <path
-        fill="#34A853"
-        d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.95v2.33A9 9 0 0 0 9 18z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.05l3.02-2.33z"
-      />
-      <path
-        fill="#EA4335"
-        d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"
-      />
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <path d="M6.361 2.943 0 21.056h4.942l1.077-3.133H11.4v-3.633H7.234l3.734-11.347z" />
+      <path d="M13.837 21.056h6.855c1.86 0 3.308-.554 4.342-1.66 1.033-1.107 1.55-2.573 1.55-4.4V2.943h-4.85v11.949c0 .805-.184 1.42-.552 1.844-.367.417-.902.626-1.605.626h-5.74z" />
     </svg>
   );
 }
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    () => OAUTH_ERROR_MESSAGES[searchParams.get("error") ?? ""] ?? null,
-  );
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    if (res?.error) {
-      setError("Invalid email or password.");
-      return;
-    }
-    router.push("/");
-    router.refresh();
-  }
+  const error = OAUTH_ERROR_MESSAGES[searchParams.get("error") ?? ""] ?? null;
 
   return (
     <main className="mx-auto flex min-h-[80vh] w-full max-w-sm flex-col justify-center gap-8 px-8">
       <div className="flex flex-col gap-2">
         <p className="font-mono text-xs uppercase tracking-widest text-ash">Sign in</p>
         <h1 className="font-display text-3xl text-paper">Welcome back.</h1>
+        <p className="text-sm text-ash">
+          AniDex is an AniList client — sign in with your AniList account and your list stays
+          in sync both ways.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Email</span>
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] uppercase tracking-widest text-ash">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border border-line bg-transparent px-3 py-2 text-paper placeholder:text-ash/60 focus:border-hanko focus:outline-none"
-          />
-        </label>
+      {error && <p className="font-mono text-xs text-hanko">{error}</p>}
 
-        {error && <p className="font-mono text-xs text-hanko">{error}</p>}
-
-        <button
-          type="submit"
-          className="mt-2 border border-hanko bg-hanko px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
-        >
-          Sign in
-        </button>
-      </form>
-
-      <p className="font-mono text-[11px] text-ash">
-        No account?{" "}
-        <Link href="/register" className="text-paper underline underline-offset-2 hover:text-hanko">
-          Register
-        </Link>
-        {SHOW_DEV_HINT && " · Dev seed login: dev@example.com / devpassword"}
-      </p>
-
-      <div className="flex flex-col gap-4 border-t border-line pt-6">
-        <button
-          onClick={() => signIn("google", { redirectTo: "/" })}
-          className="flex items-center justify-center gap-2.5 border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-colors hover:border-paper"
-        >
-          <GoogleIcon />
-          Sign in with Google
-        </button>
-      </div>
+      <button
+        onClick={() => signIn("anilist", { redirectTo: "/" })}
+        className="flex items-center justify-center gap-2.5 border border-hanko bg-hanko px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-paper transition-opacity hover:opacity-85"
+      >
+        <AniListIcon />
+        Sign in with AniList
+      </button>
     </main>
   );
 }
