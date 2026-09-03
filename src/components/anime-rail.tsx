@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { AnilistMedia } from "@/lib/anilist";
+import type { AnilistMedia } from "@/lib/anilist-client";
 import { AnimeCard } from "@/components/anime-card";
 
 export function AnimeRail({
