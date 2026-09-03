@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { getAnilistUserList } from "@/lib/anilist";
 import { MAX_FAVORITES } from "@/lib/profile-prefs";
 
 const sectionSchema = z.object({
@@ -30,6 +29,18 @@ const bodySchema = z.object({
   profilePrefs: prefsSchema.optional(),
 });
 
+// No server-side "is this actually on your AniList list" check on
+// bannerAnilistId/favoriteIds anymore (there used to be one, calling
+// src/lib/anilist.ts's getAnilistUserList) — dropped after it turned out
+// to be the slow/unreliable part of this route in production: requests
+// from this server's own IP to AniList appear to hit something (Cloudflare,
+// most likely) that's much slower and occasionally non-JSON compared to a
+// visitor's browser calling AniList directly, and profile saves were
+// hanging or crashing because of it. The client-side picker
+// (profile-customize-panel.tsx) already only offers choices from the
+// owner's own entries, so the worst case of trusting it here is a banner/
+// favorite pointing at something not actually tracked - a broken image,
+// not a security issue - which isn't worth this reliability cost.
 export async function PATCH(req: NextRequest) {
   const userId = await requireUserId();
   if (userId instanceof NextResponse) return userId;
@@ -41,51 +52,9 @@ export async function PATCH(req: NextRequest) {
   }
   const { profilePrefs, ...rest } = parsed.data;
 
-  // A banner or favorite pointing at something not actually on the owner's
-  // AniList list would just be a broken picture (there'd be nothing to
-  // look up), so silently drop anything that doesn't check out rather than
-  // erroring — the client already only offers picks from the owner's own
-  // entries. AniList is the only place list data lives now (see
-  // anilist-client.ts's file comment), so "owned" means "on the user's
-  // real AniList list", checked with a live fetch here.
-  //
-  // A genuinely-unowned id and a check that couldn't even run (AniList
-  // down, a transient network error) must not look the same: silently
-  // dropping the pick on a real AniList failure would look to the user
-  // like their banner just vanished with no explanation, instead of a
-  // save that failed and can be retried.
-  let cleanedPrefs = profilePrefs;
-  if (profilePrefs) {
-    const candidateIds = [
-      ...(profilePrefs.bannerAnilistId != null ? [profilePrefs.bannerAnilistId] : []),
-      ...profilePrefs.favoriteIds,
-    ];
-    let owned = new Set<number>();
-    if (candidateIds.length) {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-      try {
-        const current = user?.name ? await getAnilistUserList(user.name) : [];
-        owned = new Set(current.map((e) => e.anilistId));
-      } catch {
-        return NextResponse.json(
-          { error: "Couldn't verify your AniList list right now. Try saving again." },
-          { status: 502 },
-        );
-      }
-    }
-    cleanedPrefs = {
-      ...profilePrefs,
-      bannerAnilistId:
-        profilePrefs.bannerAnilistId != null && owned.has(profilePrefs.bannerAnilistId)
-          ? profilePrefs.bannerAnilistId
-          : null,
-      favoriteIds: profilePrefs.favoriteIds.filter((id) => owned.has(id)),
-    };
-  }
-
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { ...rest, profilePrefs: cleanedPrefs },
+    data: { ...rest, profilePrefs },
   });
   return NextResponse.json({
     bio: user.bio,
