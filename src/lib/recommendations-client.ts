@@ -30,7 +30,7 @@
 //    subtract from their genres'/pairs' totals - a pair the user keeps
 //    dropping shouldn't get recommended just because it also shows up in
 //    a couple of completed favorites.
-import { getUserMediaList, getMediaByGenreGroups, type AnilistMedia } from "@/lib/anilist-client";
+import { getUserMediaList, getMediaByGenreGroups, type AnilistMedia, type AnilistListEntry } from "@/lib/anilist-client";
 
 const WATCHED_STATUSES = new Set(["COMPLETED", "WATCHING", "REWATCHING"]);
 
@@ -59,12 +59,28 @@ export type RecommendationRail = {
   media: AnilistMedia[];
 };
 
+// Top-level entry point: fetches the user's own list itself, then scores
+// it. Used by the standalone /recommendations page, which has nothing
+// else on it that already needs that same list.
 export async function getRecommendationRails(
   anilistUsername: string,
   maxRails: number,
   perRail: number,
 ): Promise<RecommendationRail[]> {
   const entries = await getUserMediaList(anilistUsername);
+  return buildRecommendationRails(entries, maxRails, perRail);
+}
+
+// Takes an already-fetched list instead of fetching its own — for a caller
+// that already needs the user's full list for something else on the same
+// page (e.g. landing-rails.tsx also needs it for the tracked-ids overlay
+// on every card), so there's exactly one getUserMediaList call per page
+// load instead of two identical ones.
+export async function buildRecommendationRails(
+  entries: AnilistListEntry[],
+  maxRails: number,
+  perRail: number,
+): Promise<RecommendationRail[]> {
   if (entries.length === 0) return [];
 
   // Excluded from candidates below regardless of status - recommendations

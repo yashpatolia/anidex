@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { getLandingRails, type AnilistMedia } from "@/lib/anilist-client";
-import { getRecommendationRails, type RecommendationRail } from "@/lib/recommendations-client";
-import { useTrackedIds } from "@/lib/use-tracked-ids";
+import { getLandingRails, getUserMediaList, type AnilistMedia } from "@/lib/anilist-client";
+import { buildRecommendationRails, type RecommendationRail } from "@/lib/recommendations-client";
 import { AnimeRail } from "@/components/anime-rail";
 import { HeroGallery } from "@/components/hero-gallery";
 
@@ -19,7 +18,7 @@ import { HeroGallery } from "@/components/hero-gallery";
 export function LandingRails({ signedIn }: { signedIn: boolean }) {
   const { data: session } = useSession();
   const anilistUsername = session?.user?.name ?? null;
-  const trackedIds = useTrackedIds();
+  const [trackedIds, setTrackedIds] = useState<Set<number>>(new Set());
   const [rails, setRails] = useState<{ trending: AnilistMedia[]; popular: AnilistMedia[]; topRated: AnilistMedia[] } | null>(
     null,
   );
@@ -35,14 +34,22 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
         // Best-effort — leaves rails at their initial empty-ish state
         // rather than crashing the whole home page on a transient error.
       });
+    // One fetch of the signed-in user's own list serves both the
+    // tracked-ids overlay on every card below AND the recommendation row —
+    // getRecommendationRails would otherwise fetch this exact same list a
+    // second time internally, doubling a request this page can do once.
     // Only ever the single top row here — Home also serves signed-out
     // visitors browsing the public trending/popular rails, so this stays a
     // light, single-row taste of what /recommendations has more of, not a
     // second dedicated page's worth.
     if (signedIn && anilistUsername) {
-      getRecommendationRails(anilistUsername, 1, 18)
-        .then((r) => {
-          if (!cancelled) setRecommended(r);
+      getUserMediaList(anilistUsername)
+        .then((entries) => {
+          if (cancelled) return;
+          setTrackedIds(new Set(entries.map((e) => e.anime.id)));
+          return buildRecommendationRails(entries, 1, 18).then((r) => {
+            if (!cancelled) setRecommended(r);
+          });
         })
         .catch(() => {});
     }
