@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { AnilistMedia } from "@/lib/anilist";
+import type { AnilistMedia } from "@/lib/anilist-client";
 import { QuickAddButton } from "@/components/quick-add-button";
 
 export function AnimeCard({

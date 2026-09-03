@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BROWSE_GENRES, BROWSE_FORMATS, BROWSE_STATUSES, BROWSE_SORTS } from "@/lib/anilist";
+import { BROWSE_GENRES, BROWSE_FORMATS, BROWSE_STATUSES, BROWSE_SORTS } from "@/lib/anilist-client";
 import { FilterSelect } from "@/components/filter-select";
 import { FilterMultiSelect } from "@/components/filter-multi-select";
 import { FilterYearRange } from "@/components/filter-year-range";
