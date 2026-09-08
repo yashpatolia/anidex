@@ -3,7 +3,7 @@
 // mapped onto WatchStatus and our 1-10 score scale. Anime that can't be
 // matched to an AniList id are returned separately so the UI can show them
 // as skipped rather than silently dropping them.
-import { getAnilistIdsByMalIds, searchAnime, type AnilistListEntry } from "@/lib/anilist";
+import { getAnilistIdsByMalIds, searchAnimeByTitles, type AnilistListEntry } from "@/lib/anilist";
 import { ANILIST_STATUS_TO_OURS, type WatchStatus } from "@/lib/anilist-shared";
 import type { MalEntry } from "./mal-parser";
 
@@ -54,10 +54,15 @@ export async function resolveMalEntries(
   // AniList data (same category as the AnimeCache table), so it's gone.
   // A live search call here is fine under the new no-storage rule: it's a
   // one-time pass-through during an explicit, user-initiated import, not
-  // anything cached or persisted.
+  // anything cached or persisted. Batched via searchAnimeByTitles (a
+  // handful of aliased requests instead of one full request per entry,
+  // sequentially) — see that function's comment for why this used to be
+  // the single easiest way for a big MAL list to trip AniList's rate
+  // limit on its own.
   const unmatched: UnmatchedEntry[] = [];
+  const searchResults = await searchAnimeByTitles(stillUnmatched.map((e) => e.title));
   for (const entry of stillUnmatched) {
-    const { media } = await searchAnime(entry.title, 1, 5);
+    const media = searchResults.get(entry.title) ?? [];
     const lowerTitle = entry.title.toLowerCase();
     const match = media.find(
       (m) =>

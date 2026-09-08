@@ -206,6 +206,53 @@ export async function searchAnime(search: string, page = 1, perPage = 20) {
   return data.Page;
 }
 
+// Batches multiple title searches into as few requests as possible via
+// GraphQL aliases (same trick as getMediaByIds below) — used by the MAL
+// import's title-resolution fallback (resolve.ts), which used to issue one
+// full searchAnime request per unmatched entry, sequentially, entirely
+// from this shared server IP. A MAL list with a lot of older/obscure
+// entries AniList doesn't have a MAL id link for could rack up dozens of
+// individual requests that way on its own, easily enough to trip AniList's
+// per-IP rate limit even before anything else on the server was using it.
+// Deliberately sequential across groups (not Promise.all like
+// getMediaByIds) — this is specifically the path flagged as rate-limit-
+// prone, so no reason to burst it back up again.
+const SEARCH_ALIASES_PER_REQUEST = 8;
+
+export async function searchAnimeByTitles(titles: string[]): Promise<Map<string, AnilistMedia[]>> {
+  const result = new Map<string, AnilistMedia[]>();
+  if (titles.length === 0) return result;
+
+  const groups: string[][] = [];
+  for (let i = 0; i < titles.length; i += SEARCH_ALIASES_PER_REQUEST) {
+    groups.push(titles.slice(i, i + SEARCH_ALIASES_PER_REQUEST));
+  }
+
+  for (const group of groups) {
+    const query = `
+      query (${group.map((_, i) => `$search${i}: String`).join(", ")}) {
+        ${group
+          .map(
+            (_, i) => `
+          s${i}: Page(perPage: 5) {
+            media(search: $search${i}, type: ANIME, sort: SEARCH_MATCH, isAdult: false) {
+              ${MEDIA_FIELDS}
+            }
+          }`,
+          )
+          .join("\n")}
+      }
+    `;
+    const variables: Record<string, string> = {};
+    group.forEach((title, i) => (variables[`search${i}`] = title));
+
+    const data = await anilistFetch<Record<string, { media: AnilistMedia[] }>>(query, variables);
+    group.forEach((title, i) => result.set(title, data[`s${i}`]?.media ?? []));
+  }
+
+  return result;
+}
+
 export async function getAnimeById(id: number): Promise<AnilistMediaDetail | null> {
   const query = `
     query ($id: Int) {
