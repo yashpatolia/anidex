@@ -57,7 +57,24 @@ export function RecommendationsView() {
       </header>
 
       {rails.map((rail) => (
-        <AnimeRail key={rail.title} title={rail.title} media={rail.media} />
+        <AnimeRail
+          key={rail.title}
+          title={rail.title}
+          media={rail.media}
+          onItemStatusChange={(id, status) => {
+            // A row that just got a status is now tracked — a
+            // recommendation row should never keep showing something the
+            // user just added, regardless of which status they picked.
+            if (status == null) return;
+            setRails((prev) =>
+              prev
+                ? prev
+                    .map((r) => (r.title === rail.title ? { ...r, media: r.media.filter((m) => m.id !== id) } : r))
+                    .filter((r) => r.media.length > 0)
+                : prev,
+            );
+          }}
+        />
       ))}
     </main>
   );

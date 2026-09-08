@@ -37,8 +37,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const resolved = resolveAnilistEntries(entries);
-  const preview = await buildPreview(userId, resolved);
-
-  return NextResponse.json({ ...preview, unmatched: [] });
+  // buildPreview makes live AniList calls (getAnimeCardsByIds, plus the
+  // current user's own list) that can fail — see mal-account/preview/
+  // route.ts's comment on the same pattern. Uncaught, that would surface
+  // to the frontend as a generic, unhelpful error instead of this one.
+  try {
+    const resolved = resolveAnilistEntries(entries);
+    const preview = await buildPreview(userId, resolved);
+    return NextResponse.json({ ...preview, unmatched: [] });
+  } catch {
+    return NextResponse.json(
+      { error: "AniList looked slow or rate-limited just now while matching up that list. Try again in a moment." },
+      { status: 502 },
+    );
+  }
 }

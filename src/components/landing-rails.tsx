@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getLandingRails, getUserMediaList, type AnilistMedia } from "@/lib/anilist-client";
+import type { WatchStatus } from "@/lib/anilist-shared";
 import { buildRecommendationRails, type RecommendationRail } from "@/lib/recommendations-client";
 import { AnimeRail } from "@/components/anime-rail";
 import { HeroGallery } from "@/components/hero-gallery";
@@ -18,7 +19,7 @@ import { HeroGallery } from "@/components/hero-gallery";
 export function LandingRails({ signedIn }: { signedIn: boolean }) {
   const { data: session } = useSession();
   const anilistUsername = session?.user?.name ?? null;
-  const [trackedIds, setTrackedIds] = useState<Set<number>>(new Set());
+  const [trackedStatuses, setTrackedStatuses] = useState<Map<number, WatchStatus>>(new Map());
   const [rails, setRails] = useState<{ trending: AnilistMedia[]; popular: AnilistMedia[]; topRated: AnilistMedia[] } | null>(
     null,
   );
@@ -46,7 +47,7 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
       getUserMediaList(anilistUsername)
         .then((entries) => {
           if (cancelled) return;
-          setTrackedIds(new Set(entries.map((e) => e.anime.id)));
+          setTrackedStatuses(new Map(entries.map((e) => [e.anime.id, e.status])));
           return buildRecommendationRails(entries, 1, 18).then((r) => {
             if (!cancelled) setRecommended(r);
           });
@@ -103,7 +104,21 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
 
       {recommended[0] && (
         <>
-          <AnimeRail title={recommended[0].title} media={recommended[0].media} />
+          <AnimeRail
+            title={recommended[0].title}
+            media={recommended[0].media}
+            onItemStatusChange={(id, status) => {
+              // A row that just got a status is now tracked — recommendations
+              // (here and on the standalone page) should never keep showing
+              // something the user just added, regardless of which status.
+              if (status == null) return;
+              setRecommended((prev) =>
+                prev
+                  .map((rail) => ({ ...rail, media: rail.media.filter((m) => m.id !== id) }))
+                  .filter((rail) => rail.media.length > 0),
+              );
+            }}
+          />
           <div className="-mt-4 px-8 pb-6 2xl:px-16">
             <Link
               href="/recommendations"
@@ -114,9 +129,9 @@ export function LandingRails({ signedIn }: { signedIn: boolean }) {
           </div>
         </>
       )}
-      <AnimeRail title="Trending now" media={rails?.trending ?? []} trackedIds={[...trackedIds]} />
-      <AnimeRail title="All-time favorites" media={rails?.popular ?? []} trackedIds={[...trackedIds]} />
-      <AnimeRail title="Top rated" media={rails?.topRated ?? []} trackedIds={[...trackedIds]} />
+      <AnimeRail title="Trending now" media={rails?.trending ?? []} trackedStatuses={trackedStatuses} />
+      <AnimeRail title="All-time favorites" media={rails?.popular ?? []} trackedStatuses={trackedStatuses} />
+      <AnimeRail title="Top rated" media={rails?.topRated ?? []} trackedStatuses={trackedStatuses} />
     </main>
   );
 }

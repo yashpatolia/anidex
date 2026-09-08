@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { browseAnime, type AnilistMedia } from "@/lib/anilist-client";
-import { useTrackedIds } from "@/lib/use-tracked-ids";
+import { useTrackedEntries } from "@/lib/use-tracked-entries";
 import { AnimeCard } from "@/components/anime-card";
 import { PageLoading } from "@/components/page-loading";
 
@@ -58,7 +58,7 @@ export function BrowseView() {
 
 function BrowseResults({ query }: { query: Query }) {
   const searchParams = useSearchParams();
-  const trackedIds = useTrackedIds();
+  const trackedEntries = useTrackedEntries();
   const [media, setMedia] = useState<AnilistMedia[] | null>(null);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [error, setError] = useState(false);
@@ -111,7 +111,11 @@ function BrowseResults({ query }: { query: Query }) {
       ) : (
         <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 2xl:grid-cols-10">
           {media.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} initialTracked={trackedIds.has(anime.id)} />
+            <AnimeCard
+              key={anime.id}
+              anime={anime}
+              initialStatus={trackedEntries.get(anime.id) ?? null}
+            />
           ))}
         </div>
       )}

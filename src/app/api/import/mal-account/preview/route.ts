@@ -41,8 +41,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { resolved, unmatched } = await resolveMalEntries(entries);
-  const preview = await buildPreview(userId, resolved);
-
-  return NextResponse.json({ ...preview, unmatched });
+  // resolveMalEntries and buildPreview both make live AniList calls
+  // (resolveMalEntries's title-search fallback runs one per unmatched
+  // entry, sequentially) — a big MAL list means a lot of them from this
+  // server's own IP, which anilist.ts's own comments flag as more prone
+  // to rate-limiting/timeouts than a visitor's browser calling AniList
+  // directly. Unguarded, a failure here threw straight out of the route
+  // handler: Next renders its own HTML error page for that, the frontend's
+  // res.json() then chokes on non-JSON and shows a generic message with no
+  // way to tell what actually happened. Catch it and say so instead.
+  try {
+    const { resolved, unmatched } = await resolveMalEntries(entries);
+    const preview = await buildPreview(userId, resolved);
+    return NextResponse.json({ ...preview, unmatched });
+  } catch {
+    return NextResponse.json(
+      { error: "AniList looked slow or rate-limited just now while matching up that list. Try again in a moment." },
+      { status: 502 },
+    );
+  }
 }

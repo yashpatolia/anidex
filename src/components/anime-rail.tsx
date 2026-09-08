@@ -2,16 +2,29 @@
 
 import { useRef } from "react";
 import type { AnilistMedia } from "@/lib/anilist-client";
+import type { WatchStatus } from "@/lib/anilist-shared";
 import { AnimeCard } from "@/components/anime-card";
 
 export function AnimeRail({
   title,
   media,
   trackedIds,
+  trackedStatuses,
+  onItemStatusChange,
 }: {
   title: string;
   media: AnilistMedia[];
   trackedIds?: number[];
+  // Real per-id status, when the caller has it (landing-rails' Trending/
+  // Popular/Top rated). Takes precedence over trackedIds for a given id;
+  // trackedIds stays around for callers that only know plain tracked/
+  // untracked.
+  trackedStatuses?: Map<number, WatchStatus>;
+  // Fires when a card's own status editor changes what's tracked, e.g. for
+  // a caller (Recommendations, landing's "Recommended" row) that needs to
+  // drop a card the moment it gets tracked rather than keep showing
+  // something that no longer belongs in the row.
+  onItemStatusChange?: (anilistId: number, status: WatchStatus | null) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const tracked = new Set(trackedIds);
@@ -42,7 +55,14 @@ export function AnimeRail({
               className="w-[170px] flex-shrink-0 lg:w-[190px]"
               style={{ scrollSnapAlign: "start" }}
             >
-              <AnimeCard anime={anime} initialTracked={tracked.has(anime.id)} />
+              <AnimeCard
+                anime={anime}
+                initialTracked={tracked.has(anime.id)}
+                initialStatus={trackedStatuses?.get(anime.id) ?? null}
+                onStatusChange={
+                  onItemStatusChange ? (status) => onItemStatusChange(anime.id, status) : undefined
+                }
+              />
             </div>
           ))}
         </div>

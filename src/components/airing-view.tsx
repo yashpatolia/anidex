@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAiringSchedule } from "@/lib/anilist-client";
-import { useTrackedIds } from "@/lib/use-tracked-ids";
+import { useTrackedEntries } from "@/lib/use-tracked-entries";
 import { AiringCalendarView, type AiringItem } from "@/components/airing-calendar-view";
 import { PageLoading } from "@/components/page-loading";
 
@@ -15,7 +15,7 @@ const ONE_WEEK_SECONDS = 7 * 24 * 60 * 60;
 const MAX_ITEMS = 140;
 
 export function AiringView() {
-  const trackedIds = useTrackedIds();
+  const trackedEntries = useTrackedEntries();
   const [items, setItems] = useState<AiringItem[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -45,7 +45,7 @@ export function AiringView() {
               airingAt: entry.airingAt,
               anime: entry.media,
               isAdult: entry.media.isAdult,
-              initialTracked: trackedIds.has(entry.media.id),
+              initialTracked: trackedEntries.has(entry.media.id),
             })),
         );
       })
@@ -56,10 +56,11 @@ export function AiringView() {
     return () => {
       cancelled = true;
     };
-    // trackedIds intentionally excluded — it resolves shortly after mount
-    // from a separate fetch (useTrackedIds), and re-running the whole
-    // schedule fetch just to update initialTracked would be wasteful;
-    // QuickAddButton already manages its own tracked state after that.
+    // trackedEntries intentionally excluded — it resolves shortly after
+    // mount from a separate fetch (useTrackedEntries), and re-running the
+    // whole schedule fetch just to update initialTracked would be
+    // wasteful; QuickAddButton already manages its own tracked state after
+    // that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -1,17 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { AnilistMedia } from "@/lib/anilist-client";
+import type { WatchStatus } from "@/lib/anilist-shared";
 import { QuickAddButton } from "@/components/quick-add-button";
 
 export function AnimeCard({
   anime,
   initialTracked = false,
+  initialStatus = null,
   score,
   dense = false,
   isAdult = false,
+  onStatusChange,
 }: {
   anime: AnilistMedia;
   initialTracked?: boolean;
+  // The viewer's real list status for this entry, when known (Browse,
+  // Seasonal, Landing) — lets the overlay badge read "Watching"/"Completed"
+  // instead of just a generic checkmark. Callers that only know a plain
+  // tracked/untracked boolean (Profile viewing someone else's list) can
+  // keep passing initialTracked instead; leave initialStatus unset and the
+  // badge falls back to a checkmark.
+  initialStatus?: WatchStatus | null;
   // The viewer's own score for this entry (1-10), not AniList's average —
   // shown as a stamped badge over the cover when present (Profile only;
   // Browse/Seasonal/Landing never pass this).
@@ -24,6 +34,11 @@ export function AnimeCard({
   // popularity-ranked "what's airing" list shouldn't silently drop
   // entries) — it tags them instead.
   isAdult?: boolean;
+  // Fires whenever the card's own status editor changes what's tracked —
+  // lets a parent that filters by tracked status (Recommendations, the
+  // landing page's "Recommended" row) drop this card immediately instead
+  // of waiting for its next full data fetch.
+  onStatusChange?: (status: WatchStatus | null) => void;
 }) {
   const title = anime.title.english ?? anime.title.romaji ?? anime.title.native ?? "Untitled";
 
@@ -43,7 +58,12 @@ export function AnimeCard({
           />
         )}
 
-        <QuickAddButton anilistId={anime.id} initialTracked={initialTracked} />
+        <QuickAddButton
+          anilistId={anime.id}
+          initialTracked={initialTracked}
+          initialStatus={initialStatus}
+          onStatusChange={onStatusChange}
+        />
 
         {score != null && (
           <span className="absolute right-2 top-2 flex h-7 items-center border-2 border-hanko bg-ink/90 px-2 font-mono text-xs font-semibold text-hanko">

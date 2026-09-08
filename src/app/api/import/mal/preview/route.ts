@@ -30,8 +30,18 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
-  const { resolved, unmatched } = await resolveMalEntries(entries);
-  const preview = await buildPreview(userId, resolved);
-
-  return NextResponse.json({ ...preview, unmatched });
+  // See mal-account/preview/route.ts's comment on this same try/catch —
+  // both resolveMalEntries and buildPreview make live AniList calls that
+  // can fail (rate limit, timeout), and an uncaught throw here would
+  // otherwise surface to the frontend as a generic, unhelpful error.
+  try {
+    const { resolved, unmatched } = await resolveMalEntries(entries);
+    const preview = await buildPreview(userId, resolved);
+    return NextResponse.json({ ...preview, unmatched });
+  } catch {
+    return NextResponse.json(
+      { error: "AniList looked slow or rate-limited just now while matching up that list. Try again in a moment." },
+      { status: 502 },
+    );
+  }
 }
